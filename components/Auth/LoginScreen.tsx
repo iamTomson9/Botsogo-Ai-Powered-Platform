@@ -7,18 +7,21 @@ import {
   ScrollView,
   StyleSheet,
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
+  SafeAreaView,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { useAuth } from "../../hooks/useAuth";
-import { Activity, ShieldCheck, Clock } from "lucide-react-native";
+import { AiHcpLogo } from "../Startup/AiHcpLogo";
+import { Mail, Lock, User, ArrowRight, CheckCircle2 } from "lucide-react-native";
 
 export default function LoginScreen() {
   const { login, signup } = useAuth();
   const router = useRouter();
-  const [isLogin, setIsLogin] = useState(false);
+  const { mode } = useLocalSearchParams();
+  
+  const [isLogin, setIsLogin] = useState(mode === 'login' || !mode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -27,9 +30,9 @@ export default function LoginScreen() {
   const [error, setError] = useState("");
 
   const roles: Array<{ label: string; value: "patient" | "doctor" | "admin" }> = [
-    { label: "Patient / Customer", value: "patient" },
-    { label: "Medical Staff (Doctor)", value: "doctor" },
-    { label: "System Administrator", value: "admin" },
+    { label: "Patient", value: "patient" },
+    { label: "Doctor", value: "doctor" },
+    { label: "Admin", value: "admin" },
   ];
 
   const handleSubmit = async () => {
@@ -41,7 +44,7 @@ export default function LoginScreen() {
       } else {
         await signup(email, password, name, role);
       }
-      router.replace("/");
+      // router.replace handles the navigation in AuthGuard
     } catch (err: any) {
       setError(err.message || "Failed to authenticate");
     } finally {
@@ -50,184 +53,165 @@ export default function LoginScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.logoBox}>
-            <Activity color="#fff" size={28} />
+    <SafeAreaView style={styles.safe}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+          {/* Top Logo Section */}
+          <View style={styles.logoSection}>
+            <AiHcpLogo size={80} color="#5BAFB8" />
+            <Text style={styles.brandName}>AI-HCP</Text>
           </View>
-          <Text style={styles.logoText}>Botsogo.</Text>
-        </View>
 
-        {/* Feature highlights */}
-        <View style={styles.highlights}>
-          <View style={styles.highlightRow}>
-            <View style={styles.highlightIcon}>
-              <Clock color="#10b981" size={16} />
-            </View>
-            <Text style={styles.highlightText}>Smart virtual queues reduce wait times by 40%.</Text>
+          {/* Titles */}
+          <View style={styles.titleSection}>
+            <Text style={styles.title}>{isLogin ? "Welcome back" : "Create Account"}</Text>
+            <Text style={styles.subtitle}>
+              {isLogin 
+                ? "Sign in to continue your journey to better health." 
+                : "Join AI-HCP today for smarter health insights."}
+            </Text>
           </View>
-          <View style={styles.highlightRow}>
-            <View style={styles.highlightIcon}>
-              <ShieldCheck color="#10b981" size={16} />
-            </View>
-            <Text style={styles.highlightText}>Secure, intelligent & scalable infrastructure.</Text>
-          </View>
-        </View>
 
-        {/* Card */}
-        <View style={styles.card}>
-          <View style={styles.cardAccent} />
-          <Text style={styles.cardTitle}>
-            {isLogin ? "Welcome back" : "Create an account"}
-          </Text>
-          <Text style={styles.cardSubtitle}>
-            {isLogin
-              ? "Enter your credentials to securely access your portal."
-              : "Sign up below to join the Botsogo network."}
-          </Text>
+          {/* Form */}
+          <View style={styles.form}>
+            {!!error && (
+              <View style={styles.errorBox}>
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            )}
 
-          {!!error && (
-            <View style={styles.errorBox}>
-              <ShieldCheck color="#f87171" size={16} />
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          )}
+            {!isLogin && (
+              <>
+                <View style={styles.inputWrapper}>
+                  <User color="#828282" size={20} style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Full Name"
+                    placeholderTextColor="#828282"
+                    value={name}
+                    onChangeText={setName}
+                  />
+                </View>
 
-          {!isLogin && (
-            <>
-              <Text style={styles.label}>Full Name</Text>
+                <Text style={styles.roleLabel}>I am a:</Text>
+                <View style={styles.roleContainer}>
+                  {roles.map((r) => (
+                    <TouchableOpacity
+                      key={r.value}
+                      style={[styles.roleChip, role === r.value && styles.roleChipActive]}
+                      onPress={() => setRole(r.value)}
+                    >
+                      {role === r.value && <CheckCircle2 size={14} color="#fff" style={{ marginRight: 4 }} />}
+                      <Text style={[styles.roleChipText, role === r.value && styles.roleChipTextActive]}>
+                        {r.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </>
+            )}
+
+            <View style={styles.inputWrapper}>
+              <Mail color="#828282" size={20} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
-                placeholder="e.g. John Doe"
-                placeholderTextColor="#4b5563"
-                value={name}
-                onChangeText={setName}
-                autoCapitalize="words"
+                placeholder="Email Address"
+                placeholderTextColor="#828282"
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
               />
+            </View>
 
-              <Text style={styles.label}>Account Role</Text>
-              <View style={styles.roleRow}>
-                {roles.map((r) => (
-                  <TouchableOpacity
-                    key={r.value}
-                    style={[styles.roleBtn, role === r.value && styles.roleBtnActive]}
-                    onPress={() => setRole(r.value)}
-                  >
-                    <Text style={[styles.roleBtnText, role === r.value && styles.roleBtnTextActive]}>
-                      {r.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </>
-          )}
+            <View style={styles.inputWrapper}>
+              <Lock color="#828282" size={20} style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Password"
+                placeholderTextColor="#828282"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+              />
+            </View>
 
-          <Text style={styles.label}>Email Address</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="name@company.com"
-            placeholderTextColor="#4b5563"
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-          />
+            <TouchableOpacity
+              style={[styles.primaryBtn, loading && styles.btnDisabled]}
+              onPress={handleSubmit}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Text style={styles.btnText}>{isLogin ? "Login" : "Sign Up"}</Text>
+                  <ArrowRight color="#fff" size={20} />
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
 
-          <Text style={styles.label}>Secure Password</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="••••••••"
-            placeholderTextColor="#4b5563"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
-
-          <TouchableOpacity
-            style={[styles.primaryBtn, loading && styles.primaryBtnDisabled]}
-            onPress={handleSubmit}
-            disabled={loading}
+          {/* Toggle */}
+          <TouchableOpacity 
+            style={styles.toggle}
+            onPress={() => { setIsLogin(!isLogin); setError(""); }}
           >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.primaryBtnText}>
-                {isLogin ? "Sign In Securely" : "Create Account →"}
-              </Text>
-            )}
+            <Text style={styles.toggleText}>
+              {isLogin ? "Don't have an account? " : "Already have an account? "}
+              <Text style={styles.toggleLink}>{isLogin ? "Sign Up" : "Login"}</Text>
+            </Text>
           </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity onPress={() => { setIsLogin(!isLogin); setError(""); }}>
-          <Text style={styles.switchText}>
-            {isLogin ? "New to Botsogo? " : "Already have an account? "}
-            <Text style={styles.switchLink}>{isLogin ? "Create an account" : "Sign in here"}</Text>
-          </Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#011c16" },
-  scroll: { flexGrow: 1, padding: 24, paddingTop: 60 },
-  header: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 32 },
-  logoBox: {
-    width: 48, height: 48, borderRadius: 14,
-    backgroundColor: "#10b981", alignItems: "center", justifyContent: "center",
-  },
-  logoText: { fontSize: 28, fontWeight: "800", color: "#fff", letterSpacing: -0.5 },
-  highlights: { marginBottom: 28, gap: 12 },
-  highlightRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  highlightIcon: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    alignItems: "center", justifyContent: "center",
-  },
-  highlightText: { color: "#d1d5db", fontSize: 13, fontWeight: "500", flex: 1 },
-  card: {
-    backgroundColor: "rgba(255,255,255,0.03)",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.06)",
-    borderRadius: 20, padding: 24, overflow: "hidden", marginBottom: 24,
-  },
-  cardAccent: {
-    position: "absolute", top: 0, left: 0, right: 0, height: 2,
-    backgroundColor: "#10b981",
-  },
-  cardTitle: { fontSize: 24, fontWeight: "800", color: "#fff", marginBottom: 4, marginTop: 4 },
-  cardSubtitle: { fontSize: 13, color: "#9ca3af", marginBottom: 20, fontWeight: "500" },
+  safe: { flex: 1, backgroundColor: "#F8F8F8" },
+  container: { flex: 1 },
+  scroll: { flexGrow: 1, paddingHorizontal: 28, paddingTop: 40, paddingBottom: 40 },
+  logoSection: { alignItems: "center", marginBottom: 30 },
+  brandName: { fontSize: 20, fontWeight: "800", color: "#5BAFB8", letterSpacing: 2, marginTop: 8 },
+  titleSection: { marginBottom: 32 },
+  title: { fontSize: 28, fontWeight: "700", color: "#000", marginBottom: 8 },
+  subtitle: { fontSize: 15, color: "#828282", lineHeight: 22 },
+  form: { width: "100%" },
   errorBox: {
-    flexDirection: "row", alignItems: "center", gap: 8,
-    backgroundColor: "rgba(239,68,68,0.1)", borderWidth: 1, borderColor: "rgba(239,68,68,0.2)",
-    borderRadius: 12, padding: 12, marginBottom: 16,
+    backgroundColor: "#FEE2E2", padding: 12, borderRadius: 12, marginBottom: 16,
+    borderWidth: 1, borderColor: "#FCA5A5",
   },
-  errorText: { color: "#f87171", fontSize: 13, fontWeight: "600", flex: 1 },
-  label: { color: "#9ca3af", fontSize: 10, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 8, marginTop: 12 },
-  input: {
-    backgroundColor: "rgba(0,0,0,0.4)", borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
-    borderRadius: 12, padding: 14, color: "#fff", fontSize: 15, fontWeight: "500",
+  errorText: { color: "#B91C1C", fontSize: 13, fontWeight: "500" },
+  inputWrapper: {
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: "#FFF", borderWidth: 1, borderColor: "#E5E7EB",
+    borderRadius: 16, paddingHorizontal: 16, marginBottom: 16,
+    height: 56,
   },
-  roleRow: { gap: 8, marginBottom: 4 },
-  roleBtn: {
-    padding: 12, borderRadius: 10, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
-    backgroundColor: "rgba(0,0,0,0.3)",
+  inputIcon: { marginRight: 12 },
+  input: { flex: 1, color: "#000", fontSize: 16, fontWeight: "500" },
+  roleLabel: { fontSize: 14, fontWeight: "600", color: "#000", marginBottom: 12, marginLeft: 4 },
+  roleContainer: { flexDirection: "row", gap: 10, marginBottom: 20 },
+  roleChip: {
+    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
+    paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: "#E5E7EB", backgroundColor: "#FFF",
   },
-  roleBtnActive: { borderColor: "#10b981", backgroundColor: "rgba(16,185,129,0.15)" },
-  roleBtnText: { color: "#9ca3af", fontWeight: "600", fontSize: 14 },
-  roleBtnTextActive: { color: "#10b981" },
+  roleChipActive: { backgroundColor: "#5BAFB8", borderColor: "#5BAFB8" },
+  roleChipText: { fontSize: 13, fontWeight: "600", color: "#828282" },
+  roleChipTextActive: { color: "#FFF" },
   primaryBtn: {
-    backgroundColor: "#10b981", borderRadius: 14, padding: 16,
-    alignItems: "center", marginTop: 20,
-    shadowColor: "#10b981", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 12,
+    backgroundColor: "#5BAFB8", borderRadius: 50, height: 56,
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    marginTop: 10, shadowColor: "#5BAFB8", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4,
   },
-  primaryBtnDisabled: { opacity: 0.6 },
-  primaryBtnText: { color: "#fff", fontWeight: "800", fontSize: 16, letterSpacing: 0.3 },
-  switchText: { textAlign: "center", color: "#9ca3af", fontSize: 14, fontWeight: "500" },
-  switchLink: { color: "#10b981", fontWeight: "700" },
+  btnDisabled: { opacity: 0.6 },
+  btnText: { color: "#FFF", fontSize: 17, fontWeight: "700" },
+  toggle: { marginTop: 32, alignItems: "center" },
+  toggleText: { fontSize: 15, color: "#828282" },
+  toggleLink: { color: "#5BAFB8", fontWeight: "700" },
 });
+

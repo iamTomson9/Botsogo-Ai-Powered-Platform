@@ -4,11 +4,11 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
 import { useAuth } from "../../hooks/useAuth";
+import { Hospital, Clock, ArrowRight, CheckCircle2, XCircle } from "lucide-react-native";
 
 export default function BookAppointment({ clinics }: { clinics: any[] }) {
   const { user } = useAuth();
@@ -31,41 +31,52 @@ export default function BookAppointment({ clinics }: { clinics: any[] }) {
 
   return (
     <View style={styles.card}>
-      <View style={styles.accentLine} />
       <Text style={styles.title}>Express Check-In</Text>
 
       {!success ? (
         <>
-          <Text style={styles.label}>Patient Profile</Text>
-          <View style={styles.readonlyInput}>
-            <Text style={styles.readonlyText}>{user?.name || "Patient Member"}</Text>
+          <View style={styles.section}>
+            <Text style={styles.label}>Patient Profile</Text>
+            <View style={styles.readonlyInput}>
+              <Text style={styles.readonlyText}>{user?.name || "Patient Member"}</Text>
+            </View>
           </View>
 
-          <Text style={styles.label}>Select Facility</Text>
-          {clinics.map((clinic, i) => (
-            <TouchableOpacity
-              key={clinic.id}
-              style={[styles.clinicOption, selectedClinicIdx === i && styles.clinicOptionActive]}
-              onPress={() => setSelectedClinicIdx(i)}
-            >
-              <Text style={[styles.clinicName, selectedClinicIdx === i && styles.clinicNameActive]}>
-                {clinic.name}
-              </Text>
-              <Text style={styles.clinicWait}>Wait: {clinic.estimatedWait}m</Text>
-            </TouchableOpacity>
-          ))}
+          <View style={styles.section}>
+            <Text style={styles.label}>Select Facility</Text>
+            {clinics.map((clinic, i) => (
+              <TouchableOpacity
+                key={clinic.id}
+                style={[styles.clinicOption, selectedClinicIdx === i && styles.clinicOptionActive]}
+                onPress={() => setSelectedClinicIdx(i)}
+              >
+                <View style={styles.clinicHeader}>
+                  <Hospital color={selectedClinicIdx === i ? "#5BAFB8" : "#828282"} size={18} />
+                  <Text style={[styles.clinicName, selectedClinicIdx === i && styles.clinicNameActive]}>
+                    {clinic.name}
+                  </Text>
+                </View>
+                <View style={styles.clinicInfo}>
+                  <Clock color="#828282" size={12} />
+                  <Text style={styles.clinicWait}>{clinic.estimatedWait}m wait</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
 
-          <Text style={styles.label}>Reason for Visit (Optional)</Text>
-          <TextInput
-            style={styles.textArea}
-            multiline
-            numberOfLines={3}
-            placeholder="Briefly describe your priority..."
-            placeholderTextColor="#4b5563"
-            value={reason}
-            onChangeText={setReason}
-            textAlignVertical="top"
-          />
+          <View style={styles.section}>
+            <Text style={styles.label}>Reason for Visit (Optional)</Text>
+            <TextInput
+              style={styles.textArea}
+              multiline
+              numberOfLines={3}
+              placeholder="e.g. Follow-up consultation, persistent fever..."
+              placeholderTextColor="#828282"
+              value={reason}
+              onChangeText={setReason}
+              textAlignVertical="top"
+            />
+          </View>
 
           <TouchableOpacity
             style={[styles.primaryBtn, (loading || selectedClinicIdx === null) && styles.btnDisabled]}
@@ -75,14 +86,17 @@ export default function BookAppointment({ clinics }: { clinics: any[] }) {
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.primaryBtnText}>Join Virtual Queue →</Text>
+              <>
+                <Text style={styles.primaryBtnText}>Join Virtual Queue</Text>
+                <ArrowRight color="#fff" size={20} />
+              </>
             )}
           </TouchableOpacity>
         </>
       ) : (
         <View style={styles.successContainer}>
           <View style={styles.successIcon}>
-            <Text style={styles.checkmark}>✓</Text>
+             <CheckCircle2 color="#fff" size={40} />
           </View>
           <Text style={styles.successTitle}>Check-In Successful!</Text>
           <Text style={styles.successSubtitle}>
@@ -100,8 +114,9 @@ export default function BookAppointment({ clinics }: { clinics: any[] }) {
             </View>
           </View>
 
-          <TouchableOpacity onPress={() => setSuccess(null)}>
-            <Text style={styles.cancelLink}>Cancel or Switch Clinic</Text>
+          <TouchableOpacity style={styles.cancelBtn} onPress={() => setSuccess(null)}>
+            <XCircle color="#828282" size={16} />
+            <Text style={styles.cancelText}>Cancel Check-In</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -111,55 +126,56 @@ export default function BookAppointment({ clinics }: { clinics: any[] }) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "rgba(255,255,255,0.03)",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.06)",
-    borderRadius: 20, padding: 20, overflow: "hidden", marginBottom: 16,
+    backgroundColor: "#FFF",
+    borderRadius: 24, padding: 24, marginBottom: 20,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2,
   },
-  accentLine: { position: "absolute", top: 0, left: 0, right: 0, height: 2, backgroundColor: "#10b981" },
-  title: { fontSize: 20, fontWeight: "800", color: "#fff", marginBottom: 16, marginTop: 4 },
-  label: { color: "#9ca3af", fontSize: 10, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 8, marginTop: 12 },
+  title: { fontSize: 20, fontWeight: "800", color: "#000", marginBottom: 20 },
+  section: { marginBottom: 16 },
+  label: { color: "#000", fontSize: 13, fontWeight: "600", marginBottom: 8, marginLeft: 2 },
   readonlyInput: {
-    backgroundColor: "rgba(0,0,0,0.3)", borderWidth: 1, borderColor: "rgba(255,255,255,0.06)",
-    borderRadius: 12, padding: 14,
+    backgroundColor: "#F3F4F6", borderRadius: 12, padding: 14,
   },
-  readonlyText: { color: "#6b7280", fontSize: 15, fontWeight: "500" },
+  readonlyText: { color: "#828282", fontSize: 15, fontWeight: "500" },
   clinicOption: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    padding: 12, borderRadius: 12, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
-    backgroundColor: "rgba(0,0,0,0.3)", marginBottom: 8,
+    padding: 16, borderRadius: 16, borderWidth: 1, borderColor: "#E5E7EB",
+    backgroundColor: "#FFF", marginBottom: 10,
   },
-  clinicOptionActive: { borderColor: "#10b981", backgroundColor: "rgba(16,185,129,0.1)" },
-  clinicName: { color: "#d1d5db", fontWeight: "600", fontSize: 14, flex: 1 },
-  clinicNameActive: { color: "#10b981" },
-  clinicWait: { color: "#6b7280", fontSize: 12, fontWeight: "500" },
+  clinicOptionActive: { borderColor: "#5BAFB8", backgroundColor: "#F0F9FA" },
+  clinicHeader: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
+  clinicName: { color: "#000", fontWeight: "600", fontSize: 14 },
+  clinicNameActive: { color: "#5BAFB8" },
+  clinicInfo: { flexDirection: "row", alignItems: "center", gap: 4 },
+  clinicWait: { color: "#828282", fontSize: 12, fontWeight: "500" },
   textArea: {
-    backgroundColor: "rgba(0,0,0,0.4)", borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
-    borderRadius: 12, padding: 14, color: "#fff", fontSize: 14, fontWeight: "500",
-    minHeight: 80, marginBottom: 4,
+    backgroundColor: "#FFF", borderWidth: 1, borderColor: "#E5E7EB",
+    borderRadius: 16, padding: 16, color: "#000", fontSize: 15, fontWeight: "500",
+    minHeight: 100,
   },
   primaryBtn: {
-    backgroundColor: "#10b981", borderRadius: 14, padding: 16,
-    alignItems: "center", marginTop: 16,
-    shadowColor: "#10b981", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 12,
+    backgroundColor: "#5BAFB8", borderRadius: 50, height: 56,
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    marginTop: 10, shadowColor: "#5BAFB8", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4,
   },
   btnDisabled: { opacity: 0.5 },
-  primaryBtnText: { color: "#fff", fontWeight: "800", fontSize: 16 },
-  successContainer: { alignItems: "center", paddingVertical: 16 },
+  primaryBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  successContainer: { alignItems: "center", paddingVertical: 10 },
   successIcon: {
-    width: 72, height: 72, borderRadius: 36,
-    backgroundColor: "#10b981", alignItems: "center", justifyContent: "center",
-    marginBottom: 16,
-    shadowColor: "#10b981", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 16,
+    width: 80, height: 80, borderRadius: 40,
+    backgroundColor: "#5BAFB8", alignItems: "center", justifyContent: "center",
+    marginBottom: 20,
   },
-  checkmark: { fontSize: 32, color: "#fff", fontWeight: "700" },
-  successTitle: { fontSize: 22, fontWeight: "800", color: "#10b981", marginBottom: 8 },
-  successSubtitle: { fontSize: 14, color: "#9ca3af", fontWeight: "500", marginBottom: 24, textAlign: "center" },
-  successStats: { flexDirection: "row", gap: 16, marginBottom: 24 },
+  successTitle: { fontSize: 22, fontWeight: "800", color: "#000", marginBottom: 8 },
+  successSubtitle: { fontSize: 14, color: "#828282", fontWeight: "500", marginBottom: 28, textAlign: "center", lineHeight: 20 },
+  successStats: { flexDirection: "row", gap: 14, marginBottom: 30 },
   statBox: {
-    flex: 1, padding: 16, backgroundColor: "rgba(255,255,255,0.04)",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", borderRadius: 16, alignItems: "center",
+    flex: 1, padding: 16, backgroundColor: "#F9FAFB",
+    borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 20, alignItems: "center",
   },
-  statLabel: { color: "#10b981", fontSize: 10, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 4 },
-  statValue: { fontSize: 28, fontWeight: "800", color: "#fff" },
-  cancelLink: { color: "#6b7280", fontSize: 13, fontWeight: "700", textDecorationLine: "underline" },
+  statLabel: { color: "#5BAFB8", fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 },
+  statValue: { fontSize: 24, fontWeight: "800", color: "#000" },
+  cancelBtn: { flexDirection: "row", alignItems: "center", gap: 6 },
+  cancelText: { color: "#828282", fontSize: 14, fontWeight: "600" },
 });
+

@@ -8,6 +8,7 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
+import { User, ClipboardList, Sparkles, CheckCircle2, ArrowRight, RotateCcw } from "lucide-react-native";
 
 export default function Consultation({
   patient,
@@ -32,13 +33,14 @@ export default function Consultation({
 
   if (submitted) {
     return (
-      <View style={[styles.card, { alignItems: "center", justifyContent: "center", flex: 1 }]}>
+      <View style={styles.successCard}>
         <View style={styles.successIcon}>
-          <Text style={styles.checkmark}>✓</Text>
+          <CheckCircle2 color="#fff" size={40} />
         </View>
         <Text style={styles.successTitle}>Consultation Complete</Text>
-        <Text style={styles.successSub}>Patient record has been updated successfully.</Text>
+        <Text style={styles.successSub}>The patient's digital health record has been updated successfully.</Text>
         <TouchableOpacity style={styles.doneBtn} onPress={onComplete}>
+          <RotateCcw color="#5BAFB8" size={18} />
           <Text style={styles.doneBtnText}>Return to Queue</Text>
         </TouchableOpacity>
       </View>
@@ -46,52 +48,71 @@ export default function Consultation({
   }
 
   return (
-    <ScrollView>
+    <ScrollView showsVerticalScrollIndicator={false}>
       <View style={styles.card}>
         <Text style={styles.heading}>Active Consultation</Text>
+        
         <View style={styles.patientBadge}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{patient.name.charAt(0)}</Text>
+            <User color="#5BAFB8" size={24} />
           </View>
-          <View>
+          <View style={styles.patientMeta}>
             <Text style={styles.patientName}>{patient.name}</Text>
             <Text style={styles.patientSymptoms}>{patient.symptoms}</Text>
           </View>
         </View>
 
-        <Text style={styles.label}>Clinical Notes</Text>
-        <TextInput
-          style={styles.textArea}
-          multiline
-          numberOfLines={5}
-          placeholder="Document clinical observations, vitals, and findings here..."
-          placeholderTextColor="#4b5563"
-          value={notes}
-          onChangeText={setNotes}
-          textAlignVertical="top"
-        />
+        <View style={styles.section}>
+          <View style={styles.labelRow}>
+            <ClipboardList color="#5BAFB8" size={16} />
+            <Text style={styles.label}>Clinical Notes</Text>
+          </View>
+          <TextInput
+            style={styles.textArea}
+            multiline
+            numberOfLines={5}
+            placeholder="Describe clinical observations, vitals, and findings..."
+            placeholderTextColor="#828282"
+            value={notes}
+            onChangeText={setNotes}
+            textAlignVertical="top"
+          />
+        </View>
 
-        <Text style={styles.label}>Preliminary Diagnosis</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="e.g. Upper respiratory tract infection"
-          placeholderTextColor="#4b5563"
-          value={diagnosis}
-          onChangeText={setDiagnosis}
-        />
+        <View style={styles.section}>
+          <Text style={styles.label}>Diagnosis & Recommendation</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="e.g. Mild viral infection, prescribed rest"
+            placeholderTextColor="#828282"
+            value={diagnosis}
+            onChangeText={setDiagnosis}
+          />
+        </View>
 
         <View style={styles.aiHint}>
+          <View style={styles.aiHeader}>
+            <Sparkles color="#5BAFB8" size={16} />
+            <Text style={styles.aiTitle}>AI Diagnostic Insights</Text>
+          </View>
           <Text style={styles.aiHintText}>
-            🤖 Botsogo AI Suggestion: Based on patient history, consider ruling out viral pharyngitis. Prior interactions showed mild symptoms. Monitor for fever progression.
+            Consider ruling out viral pharyngitis based on symptom duration. Patient history suggests seasonal sensitivity.
           </Text>
         </View>
 
         <TouchableOpacity
-          style={[styles.completeBtn, loading && { opacity: 0.6 }]}
+          style={[styles.completeBtn, (loading || !notes.trim()) && { opacity: 0.6 }]}
           onPress={handleComplete}
-          disabled={loading}
+          disabled={loading || !notes.trim()}
         >
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.completeBtnText}>Complete Consultation →</Text>}
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <>
+              <Text style={styles.completeBtnText}>End Consultation</Text>
+              <ArrowRight color="#fff" size={20} />
+            </>
+          )}
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -100,53 +121,62 @@ export default function Consultation({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "rgba(255,255,255,0.03)",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.06)",
-    borderRadius: 20, padding: 20, marginBottom: 16,
+    backgroundColor: "#FFF",
+    borderRadius: 24, padding: 24, marginBottom: 20,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2,
   },
-  heading: { fontSize: 20, fontWeight: "800", color: "#fff", marginBottom: 16 },
+  successCard: {
+    backgroundColor: "#FFF",
+    borderRadius: 24, padding: 40, alignItems: "center", justifyContent: "center",
+    shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2,
+  },
+  heading: { fontSize: 20, fontWeight: "800", color: "#000", marginBottom: 20 },
   patientBadge: {
-    flexDirection: "row", alignItems: "center", gap: 12,
-    padding: 14, borderRadius: 14,
-    backgroundColor: "rgba(16,185,129,0.08)", borderWidth: 1, borderColor: "rgba(16,185,129,0.3)",
-    marginBottom: 16,
+    flexDirection: "row", alignItems: "center", gap: 14,
+    padding: 18, borderRadius: 20,
+    backgroundColor: "#F0F9FA", borderWidth: 1, borderColor: "#CFE8EB",
+    marginBottom: 24,
   },
-  avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: "#10b981", alignItems: "center", justifyContent: "center" },
-  avatarText: { color: "#fff", fontWeight: "700", fontSize: 18 },
-  patientName: { color: "#fff", fontWeight: "700", fontSize: 15 },
-  patientSymptoms: { color: "#9ca3af", fontSize: 12, fontWeight: "500" },
-  label: { color: "#9ca3af", fontSize: 10, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 8, marginTop: 12 },
+  avatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: "#FFF", alignItems: "center", justifyContent: "center" },
+  patientMeta: { flex: 1 },
+  patientName: { color: "#000", fontWeight: "700", fontSize: 16, marginBottom: 2 },
+  patientSymptoms: { color: "#5BAFB8", fontSize: 13, fontWeight: "600" },
+  section: { marginBottom: 20 },
+  labelRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
+  label: { color: "#000", fontSize: 13, fontWeight: "600" },
   textArea: {
-    backgroundColor: "rgba(0,0,0,0.4)", borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
-    borderRadius: 12, padding: 14, color: "#fff", fontSize: 14, fontWeight: "500", minHeight: 100,
+    backgroundColor: "#F9FAFB", borderWidth: 1, borderColor: "#E5E7EB",
+    borderRadius: 16, padding: 16, color: "#000", fontSize: 15, fontWeight: "500", minHeight: 120,
   },
   input: {
-    backgroundColor: "rgba(0,0,0,0.4)", borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
-    borderRadius: 12, padding: 14, color: "#fff", fontSize: 14, fontWeight: "500",
+    backgroundColor: "#F9FAFB", borderWidth: 1, borderColor: "#E5E7EB",
+    borderRadius: 50, paddingHorizontal: 20, height: 50, color: "#000", fontSize: 15, fontWeight: "500",
   },
   aiHint: {
-    marginTop: 16, padding: 14, borderRadius: 14,
-    backgroundColor: "rgba(99,102,241,0.1)", borderWidth: 1, borderColor: "rgba(99,102,241,0.3)",
+    marginTop: 8, padding: 20, borderRadius: 20,
+    backgroundColor: "#F0F9FA", borderWidth: 1, borderColor: "#CFE8EB",
   },
-  aiHintText: { color: "#a5b4fc", fontSize: 13, fontWeight: "500", lineHeight: 20 },
+  aiHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
+  aiTitle: { color: "#5BAFB8", fontSize: 12, fontWeight: "800", textTransform: "uppercase" },
+  aiHintText: { color: "#000", fontSize: 14, fontWeight: "500", lineHeight: 20 },
   completeBtn: {
-    backgroundColor: "#10b981", borderRadius: 14, padding: 16,
-    alignItems: "center", marginTop: 16,
-    shadowColor: "#10b981", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 12,
+    backgroundColor: "#5BAFB8", borderRadius: 50, height: 56,
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10,
+    marginTop: 24, shadowColor: "#5BAFB8", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4,
   },
-  completeBtnText: { color: "#fff", fontWeight: "800", fontSize: 16 },
+  completeBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
   successIcon: {
-    width: 72, height: 72, borderRadius: 36,
-    backgroundColor: "#10b981", alignItems: "center", justifyContent: "center",
-    marginBottom: 16,
-    shadowColor: "#10b981", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 16,
+    width: 80, height: 80, borderRadius: 40,
+    backgroundColor: "#5BAFB8", alignItems: "center", justifyContent: "center",
+    marginBottom: 24,
   },
-  checkmark: { fontSize: 32, color: "#fff", fontWeight: "700" },
-  successTitle: { fontSize: 24, fontWeight: "800", color: "#10b981", marginBottom: 8 },
-  successSub: { fontSize: 14, color: "#9ca3af", fontWeight: "500", marginBottom: 24, textAlign: "center" },
+  successTitle: { fontSize: 22, fontWeight: "800", color: "#000", marginBottom: 12 },
+  successSub: { fontSize: 14, color: "#828282", fontWeight: "500", marginBottom: 32, textAlign: "center", lineHeight: 22 },
   doneBtn: {
-    backgroundColor: "rgba(16,185,129,0.15)", borderWidth: 1, borderColor: "#10b981",
-    borderRadius: 14, paddingHorizontal: 28, paddingVertical: 14,
+    flexDirection: "row", alignItems: "center", gap: 8,
+    backgroundColor: "#F0F9FA", borderWidth: 1, borderColor: "#5BAFB8",
+    borderRadius: 50, paddingHorizontal: 24, height: 48,
   },
-  doneBtnText: { color: "#10b981", fontWeight: "700", fontSize: 15 },
+  doneBtnText: { color: "#5BAFB8", fontWeight: "700", fontSize: 15 },
 });
+

@@ -3,10 +3,9 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ScrollView,
   StyleSheet,
 } from "react-native";
-import { MapPin, Clock } from "lucide-react-native";
+import { MapPin, Clock, Users, Navigation } from "lucide-react-native";
 
 export default function MyClinics({ clinics }: { clinics: any[] }) {
   const [selected, setSelected] = useState<string | null>(null);
@@ -15,7 +14,7 @@ export default function MyClinics({ clinics }: { clinics: any[] }) {
     <View style={styles.card}>
       <View style={styles.header}>
         <View style={styles.iconBox}>
-          <MapPin color="#10b981" size={22} />
+          <MapPin color="#5BAFB8" size={22} />
         </View>
         <Text style={styles.title}>Nearby Facilities</Text>
       </View>
@@ -27,27 +26,32 @@ export default function MyClinics({ clinics }: { clinics: any[] }) {
           onPress={() => setSelected(clinic.id)}
         >
           <View style={styles.clinicTop}>
-            <Text style={[styles.clinicName, selected === clinic.id && styles.clinicNameActive]}>
-              {clinic.name}
-            </Text>
-            <View style={[styles.distanceBadge, selected === clinic.id && styles.distanceBadgeActive]}>
-              <Text style={[styles.distanceText, selected === clinic.id && styles.distanceTextActive]}>
-                {(clinic.distance || 3.1).toFixed(1)} km
-              </Text>
+            <View style={styles.nameSection}>
+              <Text style={styles.clinicName}>{clinic.name}</Text>
+              <View style={styles.locationInfo}>
+                <Navigation color="#828282" size={12} />
+                <Text style={styles.distanceText}>{(clinic.distance || 3.1).toFixed(1)} km away</Text>
+              </View>
+            </View>
+            <View style={styles.distanceBadge}>
+               <Text style={styles.badgeText}>Open</Text>
             </View>
           </View>
 
           <View style={styles.clinicStats}>
-            <View style={[styles.statBox, selected === clinic.id && styles.statBoxSelected]}>
-              <Text style={styles.statLabelNeutral}>QUEUE</Text>
-              <Text style={styles.statValueWhite}>{clinic.currentQueue || 0}</Text>
-            </View>
-            <View style={[styles.statBoxRed]}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                <Clock color="#f87171" size={10} />
-                <Text style={styles.statLabelRed}>WAIT</Text>
+            <View style={styles.statBox}>
+              <View style={styles.statHeader}>
+                <Users color="#5BAFB8" size={12} />
+                <Text style={styles.statLabel}>QUEUE</Text>
               </View>
-              <Text style={styles.statValueRed}>{clinic.estimatedWait || 0}m</Text>
+              <Text style={styles.statValue}>{clinic.currentQueue || 0}</Text>
+            </View>
+            <View style={styles.statBox}>
+              <View style={styles.statHeader}>
+                <Clock color="#F87171" size={12} />
+                <Text style={[styles.statLabel, { color: "#F87171" }]}>WAIT</Text>
+              </View>
+              <Text style={styles.statValue}>{clinic.estimatedWait || 0}m</Text>
             </View>
           </View>
         </TouchableOpacity>
@@ -58,43 +62,41 @@ export default function MyClinics({ clinics }: { clinics: any[] }) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "rgba(255,255,255,0.03)",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.06)",
-    borderRadius: 20, padding: 20, marginBottom: 16,
+    backgroundColor: "#FFF",
+    borderRadius: 24, padding: 24, marginBottom: 20,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2,
   },
-  header: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 16 },
-  iconBox: { padding: 8, backgroundColor: "rgba(16,185,129,0.1)", borderRadius: 10 },
-  title: { fontSize: 20, fontWeight: "800", color: "#fff" },
+  header: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 20 },
+  iconBox: {
+    width: 44, height: 44, backgroundColor: "#F0F9FA",
+    borderRadius: 12, alignItems: "center", justifyContent: "center",
+  },
+  title: { fontSize: 20, fontWeight: "800", color: "#000" },
   clinicCard: {
-    padding: 14, borderRadius: 16, borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.07)", backgroundColor: "rgba(0,0,0,0.3)",
-    marginBottom: 10,
+    padding: 18, borderRadius: 20, borderWidth: 1,
+    borderColor: "#E5E7EB", backgroundColor: "#FFF",
+    marginBottom: 12,
   },
   clinicCardActive: {
-    borderColor: "rgba(16,185,129,0.5)", backgroundColor: "rgba(16,185,129,0.1)",
+    borderColor: "#5BAFB8", backgroundColor: "#F0F9FA",
   },
-  clinicTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
-  clinicName: { fontSize: 15, fontWeight: "700", color: "#d1d5db", flex: 1 },
-  clinicNameActive: { color: "#fff" },
+  clinicTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 },
+  nameSection: { flex: 1 },
+  clinicName: { fontSize: 16, fontWeight: "700", color: "#000", marginBottom: 4 },
+  locationInfo: { flexDirection: "row", alignItems: "center", gap: 4 },
+  distanceText: { fontSize: 13, color: "#828282", fontWeight: "500" },
   distanceBadge: {
-    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 100,
-    backgroundColor: "rgba(255,255,255,0.05)", borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 100,
+    backgroundColor: "#ECFDF5", borderWidth: 1, borderColor: "#A7F3D0",
   },
-  distanceBadgeActive: { backgroundColor: "rgba(16,185,129,0.15)", borderColor: "rgba(16,185,129,0.4)" },
-  distanceText: { fontSize: 10, fontWeight: "700", color: "#9ca3af", textTransform: "uppercase" },
-  distanceTextActive: { color: "#10b981" },
-  clinicStats: { flexDirection: "row", gap: 10 },
+  badgeText: { fontSize: 11, fontWeight: "700", color: "#059669", textTransform: "uppercase" },
+  clinicStats: { flexDirection: "row", gap: 12 },
   statBox: {
-    flex: 1, padding: 10, borderRadius: 10,
-    backgroundColor: "rgba(255,255,255,0.05)",
+    flex: 1, padding: 12, borderRadius: 16,
+    backgroundColor: "#F9FAFB", borderWidth: 1, borderColor: "#E5E7EB",
   },
-  statBoxSelected: { backgroundColor: "rgba(0,0,0,0.4)" },
-  statBoxRed: {
-    flex: 1, padding: 10, borderRadius: 10,
-    backgroundColor: "rgba(239,68,68,0.07)",
-  },
-  statLabelNeutral: { color: "#9ca3af", fontSize: 9, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 4 },
-  statLabelRed: { color: "#f87171", fontSize: 9, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1 },
-  statValueWhite: { fontSize: 20, fontWeight: "800", color: "#fff" },
-  statValueRed: { fontSize: 20, fontWeight: "800", color: "#ef4444", marginTop: 4 },
+  statHeader: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 },
+  statLabel: { color: "#5BAFB8", fontSize: 10, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1 },
+  statValue: { fontSize: 20, fontWeight: "800", color: "#000" },
 });
+

@@ -3,13 +3,14 @@ import {
   View,
   Text,
   TouchableOpacity,
-  FlatList,
   StyleSheet,
 } from "react-native";
+import { Clock, PlayCircle, User, CheckCircle2 } from "lucide-react-native";
 
-const STATUS_COLORS: Record<string, string> = {
-  waiting: "#f59e0b",
-  consultation: "#10b981",
+const STATUS_CONFIG: Record<string, { color: string; icon: any }> = {
+  waiting: { color: "#F59E0B", icon: Clock },
+  consultation: { color: "#10B981", icon: PlayCircle },
+  completed: { color: "#5BAFB8", icon: CheckCircle2 },
 };
 
 export default function PatientQueue({
@@ -28,60 +29,69 @@ export default function PatientQueue({
 
   return (
     <View style={styles.card}>
-      <Text style={styles.title}>Patient Queue</Text>
-      <Text style={styles.subtitle}>{queue.length} patients pending</Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>Patient Queue</Text>
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>{queue.length} Pending</Text>
+        </View>
+      </View>
 
-      {queue.map((patient) => (
-        <TouchableOpacity
-          key={patient.id}
-          style={[styles.patientCard, selected === patient.id && styles.patientCardActive]}
-          onPress={() => handleSelect(patient)}
-        >
-          <View style={styles.row}>
-            <View style={[styles.avatar, { backgroundColor: selected === patient.id ? "#10b981" : "rgba(255,255,255,0.1)" }]}>
-              <Text style={styles.avatarText}>{patient.name.charAt(0)}</Text>
-            </View>
-            <View style={styles.patientInfo}>
-              <Text style={styles.patientName}>{patient.name}</Text>
-              <Text style={styles.patientSymptoms} numberOfLines={1}>{patient.symptoms}</Text>
-            </View>
-          </View>
+      {queue.map((patient) => {
+        const Config = STATUS_CONFIG[patient.status] || STATUS_CONFIG.waiting;
+        const StatusIcon = Config.icon;
 
-          <View style={styles.patientMeta}>
-            <View style={[styles.statusBadge, { backgroundColor: `${STATUS_COLORS[patient.status]}20`, borderColor: `${STATUS_COLORS[patient.status]}40` }]}>
-              <Text style={[styles.statusText, { color: STATUS_COLORS[patient.status] }]}>
-                {patient.status}
-              </Text>
+        return (
+          <TouchableOpacity
+            key={patient.id}
+            style={[styles.patientCard, selected === patient.id && styles.patientCardActive]}
+            onPress={() => handleSelect(patient)}
+          >
+            <View style={styles.row}>
+              <View style={[styles.avatar, { backgroundColor: selected === patient.id ? "#5BAFB8" : "#F3F4F6" }]}>
+                {selected === patient.id ? (
+                  <User color="#FFF" size={20} />
+                ) : (
+                  <Text style={styles.avatarText}>{patient.name.charAt(0)}</Text>
+                )}
+              </View>
+              <View style={styles.patientInfo}>
+                <Text style={styles.patientName}>{patient.name}</Text>
+                <Text style={styles.patientSymptoms} numberOfLines={1}>{patient.symptoms}</Text>
+              </View>
+              <View style={styles.meta}>
+                <StatusIcon color={Config.color} size={16} />
+                <Text style={[styles.waitText, { color: Config.color }]}>{patient.waitTime}</Text>
+              </View>
             </View>
-            <Text style={styles.waitText}>⏱ {patient.waitTime}</Text>
-          </View>
-        </TouchableOpacity>
-      ))}
+          </TouchableOpacity>
+        );
+      })}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "rgba(255,255,255,0.03)",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.06)",
-    borderRadius: 20, padding: 20,
+    backgroundColor: "#FFF",
+    borderRadius: 24, padding: 24,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2,
   },
-  title: { fontSize: 20, fontWeight: "800", color: "#fff", marginBottom: 4 },
-  subtitle: { fontSize: 12, color: "#6b7280", fontWeight: "500", marginBottom: 16 },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
+  title: { fontSize: 20, fontWeight: "800", color: "#000" },
+  badge: { backgroundColor: "#F0F9FA", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 100 },
+  badgeText: { fontSize: 11, fontWeight: "700", color: "#5BAFB8", textTransform: "uppercase" },
   patientCard: {
-    padding: 14, borderRadius: 14, borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)", backgroundColor: "rgba(0,0,0,0.3)", marginBottom: 10,
+    padding: 16, borderRadius: 20, borderWidth: 1,
+    borderColor: "#E5E7EB", backgroundColor: "#FFF", marginBottom: 12,
   },
-  patientCardActive: { borderColor: "#10b981", backgroundColor: "rgba(16,185,129,0.1)" },
-  row: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 10 },
-  avatar: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
-  avatarText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  patientCardActive: { borderColor: "#5BAFB8", backgroundColor: "#F0F9FA" },
+  row: { flexDirection: "row", alignItems: "center", gap: 12 },
+  avatar: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
+  avatarText: { color: "#828282", fontWeight: "700", fontSize: 16 },
   patientInfo: { flex: 1 },
-  patientName: { color: "#fff", fontWeight: "700", fontSize: 15 },
-  patientSymptoms: { color: "#9ca3af", fontSize: 12, fontWeight: "500" },
-  patientMeta: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 100, borderWidth: 1 },
-  statusText: { fontSize: 10, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1 },
-  waitText: { color: "#9ca3af", fontSize: 12, fontWeight: "600" },
+  patientName: { color: "#000", fontWeight: "700", fontSize: 15, marginBottom: 2 },
+  patientSymptoms: { color: "#828282", fontSize: 12, fontWeight: "500" },
+  meta: { alignItems: "flex-end", gap: 4 },
+  waitText: { fontSize: 12, fontWeight: "700" },
 });
+

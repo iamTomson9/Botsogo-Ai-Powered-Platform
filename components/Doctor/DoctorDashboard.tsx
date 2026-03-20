@@ -4,12 +4,11 @@ import {
   Text,
   ScrollView,
   StyleSheet,
-  ActivityIndicator,
   TouchableOpacity,
 } from "react-native";
 import PatientQueue from "../../components/Doctor/PatientQueue";
 import Consultation from "../../components/Doctor/Consultation";
-import { Activity } from "lucide-react-native";
+import { ClipboardList, UserRound } from "lucide-react-native";
 
 export default function DoctorDashboard() {
   const [activePatient, setActivePatient] = useState<any>(null);
@@ -22,23 +21,25 @@ export default function DoctorDashboard() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.pageTitle}>Doctor Workbench</Text>
+      <Text style={styles.pageTitle}>Patient Workflow</Text>
 
-      {/* Queue */}
-      <PatientQueue queue={mockQueue} onSelectPatient={setActivePatient} />
+      {/* Queue Section */}
+      <View style={styles.section}>
+        <PatientQueue queue={mockQueue} onSelectPatient={setActivePatient} />
+      </View>
 
-      {/* Consultation or placeholder */}
+      {/* Consultation Area */}
       <View style={styles.section}>
         {activePatient ? (
           <Consultation patient={activePatient} onComplete={() => setActivePatient(null)} />
         ) : (
           <View style={styles.emptyState}>
             <View style={styles.emptyIconBox}>
-              <Activity color="#10b981" size={36} />
+              <UserRound color="#5BAFB8" size={36} />
             </View>
-            <Text style={styles.emptyTitle}>Select Active Case</Text>
+            <Text style={styles.emptyTitle}>No Active Patient</Text>
             <Text style={styles.emptySubtitle}>
-              Choose a pending patient from the queue above to begin a consultation.
+              Select a patient from the queue above to start a digital consultation.
             </Text>
           </View>
         )}
@@ -48,21 +49,21 @@ export default function DoctorDashboard() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#011c16" },
-  content: { padding: 16, paddingBottom: 40 },
-  pageTitle: { fontSize: 26, fontWeight: "800", color: "#fff", marginBottom: 16 },
-  section: { marginTop: 4 },
+  container: { flex: 1, backgroundColor: "#F8F8F8" },
+  content: { paddingBottom: 40 },
+  pageTitle: { fontSize: 24, fontWeight: "800", color: "#000", marginBottom: 20 },
+  section: { marginBottom: 20 },
   emptyState: {
-    backgroundColor: "rgba(255,255,255,0.03)",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", borderStyle: "dashed",
-    borderRadius: 20, padding: 40, alignItems: "center",
+    backgroundColor: "#FFF",
+    borderRadius: 24, padding: 40, alignItems: "center",
+    shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2,
   },
   emptyIconBox: {
-    width: 84, height: 84, borderRadius: 42,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
+    width: 80, height: 80, borderRadius: 40,
+    backgroundColor: "#F0F9FA",
     alignItems: "center", justifyContent: "center", marginBottom: 16,
   },
-  emptyTitle: { fontSize: 22, fontWeight: "800", color: "#e5e7eb", marginBottom: 8, textAlign: "center" },
-  emptySubtitle: { fontSize: 14, color: "#6b7280", fontWeight: "500", textAlign: "center", lineHeight: 22 },
+  emptyTitle: { fontSize: 20, fontWeight: "800", color: "#000", marginBottom: 8, textAlign: "center" },
+  emptySubtitle: { fontSize: 14, color: "#828282", fontWeight: "500", textAlign: "center", lineHeight: 22 },
 });
+

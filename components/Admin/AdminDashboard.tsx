@@ -6,25 +6,23 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
-import { AlertTriangle, Clock, Users, Activity } from "lucide-react-native";
+import { AlertTriangle, Clock, Users, Activity, TrendingDown, TrendingUp, Info } from "lucide-react-native";
 
-const KPICard = ({ title, value, trend, alert, Icon }: any) => (
+const KPICard = ({ title, value, trend, trendType, alert, Icon }: any) => (
   <View style={[styles.kpiCard, alert && styles.kpiCardAlert]}>
     <View style={styles.kpiTop}>
-      <Text style={styles.kpiTitle}>{title}</Text>
-      <View style={[styles.kpiIconBox, { backgroundColor: alert ? "rgba(239,68,68,0.1)" : "rgba(16,185,129,0.1)" }]}>
-        <Icon color={alert ? "#f87171" : "#10b981"} size={18} />
+      <View style={[styles.kpiIconBox, { backgroundColor: alert ? "#FEF2F2" : "#F0F9FA" }]}>
+        <Icon color={alert ? "#EF4444" : "#5BAFB8"} size={20} />
       </View>
+      {trend && (
+        <View style={[styles.trendBadge, { backgroundColor: trendType === 'down' ? "#F0F9FA" : "#FEF2F2" }]}>
+           {trendType === 'down' ? <TrendingDown color="#5BAFB8" size={12} /> : <TrendingUp color="#EF4444" size={12} />}
+           <Text style={[styles.trendText, { color: trendType === 'down' ? "#5BAFB8" : "#EF4444" }]}>{trend}</Text>
+        </View>
+      )}
     </View>
     <Text style={styles.kpiValue}>{value}</Text>
-    {trend && (
-      <View style={styles.kpiTrendRow}>
-        <View style={[styles.trendBadge, { backgroundColor: alert ? "rgba(239,68,68,0.15)" : "rgba(16,185,129,0.15)" }]}>
-          <Text style={[styles.trendText, { color: alert ? "#f87171" : "#10b981" }]}>{trend}</Text>
-        </View>
-        <Text style={styles.trendSuffix}>vs last week</Text>
-      </View>
-    )}
+    <Text style={styles.kpiTitle}>{title}</Text>
   </View>
 );
 
@@ -46,75 +44,79 @@ export default function AdminDashboard() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator color="#10b981" size="large" />
-        <Text style={styles.loadingText}>Analyzing Data...</Text>
+        <ActivityIndicator color="#5BAFB8" size="large" />
+        <Text style={styles.loadingText}>Analyzing Health Data...</Text>
       </View>
     );
   }
 
-  // Simple bar chart replacement using native Views (no chart.js dependency)
   const stocks = [
-    { name: "Paracetamol", value: 50, max: 500, color: "#ef4444" },
-    { name: "Amoxicillin", value: 400, max: 500, color: "#10b981" },
-    { name: "Ibuprofen", value: 300, max: 500, color: "#10b981" },
-    { name: "Metformin", value: 100, max: 500, color: "#f59e0b" },
+    { name: "Paracetamol", value: 50, max: 500, color: "#EF4444" },
+    { name: "Amoxicillin", value: 400, max: 500, color: "#5BAFB8" },
+    { name: "Ibuprofen", value: 300, max: 500, color: "#5BAFB8" },
+    { name: "Metformin", value: 100, max: 500, color: "#F59E0B" },
   ];
 
-  const flowHours = ['8am', '10am', '12pm', '2pm', '4pm', '6pm'];
+  const flowHours = ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00'];
   const flowData = [15, 45, 60, 30, 50, 20];
   const maxFlow = Math.max(...flowData);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
-      <Text style={styles.pageTitle}>System Overview</Text>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+      <Text style={styles.pageTitle}>System Health</Text>
 
-      {/* KPI Cards */}
+      {/* KPI Cards Grid */}
       <View style={styles.kpiGrid}>
-        <KPICard title="Avg Wait" value={`${metrics.flow.avgWaitTime}m`} trend="↓ 12%" Icon={Clock} />
-        <KPICard title="Stockouts" value={metrics.medicine.stockouts} trend="↑ 2" alert Icon={AlertTriangle} />
+        <KPICard title="Avg Wait Time" value={`${metrics.flow.avgWaitTime}m`} trend="12%" trendType="down" Icon={Clock} />
+        <KPICard title="Total Stockouts" value={metrics.medicine.stockouts} trend="+2" trendType="up" alert Icon={AlertTriangle} />
         <KPICard title="Active Patients" value={metrics.flow.activePatients} Icon={Users} />
-        <KPICard title="AI Interactions" value={metrics.ai.todayCount} Icon={Activity} />
+        <KPICard title="AI Consults" value={metrics.ai.todayCount} Icon={Activity} />
       </View>
 
       {/* Patient Flow Chart */}
       <View style={styles.chartCard}>
-        <Text style={styles.chartTitle}>Patient Flow Trend</Text>
+        <View style={styles.chartHeader}>
+          <Text style={styles.chartTitle}>Patient Flow Intensity</Text>
+          <Info color="#828282" size={16} />
+        </View>
         <View style={styles.barChart}>
           {flowData.map((val, i) => (
             <View key={i} style={styles.barColumn}>
-              <View style={[styles.bar, { height: (val / maxFlow) * 100, backgroundColor: "#10b981" }]} />
+              <View style={[styles.bar, { height: (val / maxFlow) * 100, backgroundColor: val > 50 ? "#F87171" : "#5BAFB8" }]} />
               <Text style={styles.barLabel}>{flowHours[i]}</Text>
             </View>
           ))}
         </View>
       </View>
 
-      {/* Medicine Stock */}
+      {/* Medicine Inventory */}
       <View style={styles.chartCard}>
-        <Text style={styles.chartTitle}>Medicine Stock Status</Text>
+         <Text style={styles.chartTitle}>Essential Medication Stock</Text>
         {stocks.map((item, i) => (
           <View key={i} style={styles.stockRow}>
-            <Text style={styles.stockName}>{item.name}</Text>
+            <View style={styles.stockInfo}>
+              <Text style={styles.stockName}>{item.name}</Text>
+              <Text style={[styles.stockCount, { color: item.color }]}>{item.value} units</Text>
+            </View>
             <View style={styles.stockBarBg}>
               <View style={[styles.stockBarFill, { width: `${(item.value / item.max) * 100}%`, backgroundColor: item.color }]} />
             </View>
-            <Text style={[styles.stockCount, { color: item.color }]}>{item.value}</Text>
           </View>
         ))}
       </View>
 
-      {/* Alerts */}
+      {/* Critical Alerts Area */}
       <View style={styles.chartCard}>
-        <Text style={styles.chartTitle}>System Alerts</Text>
+        <Text style={styles.chartTitle}>Operational Alerts</Text>
         {metrics.medicine.lowStockAlerts.map((alert: any) => (
           <View key={alert.medicineId} style={styles.alertRowOrange}>
-            <AlertTriangle color="#f97316" size={18} />
+            <AlertTriangle color="#F59E0B" size={18} />
             <Text style={styles.alertTextOrange}>{alert.message}</Text>
           </View>
         ))}
         {metrics.flow.congestionAlerts.map((alert: any) => (
           <View key={alert.clinicId} style={styles.alertRowRed}>
-            <Activity color="#f87171" size={18} />
+            <Activity color="#EF4444" size={18} />
             <Text style={styles.alertTextRed}>{alert.message}</Text>
           </View>
         ))}
@@ -124,49 +126,51 @@ export default function AdminDashboard() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#011c16" },
-  loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#011c16" },
-  loadingText: { color: "#10b981", marginTop: 12, fontSize: 15, fontWeight: "600" },
-  pageTitle: { fontSize: 26, fontWeight: "800", color: "#fff", marginBottom: 16 },
-  kpiGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 20 },
+  container: { flex: 1, backgroundColor: "#F8F8F8" },
+  loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#F8F8F8" },
+  loadingText: { color: "#5BAFB8", marginTop: 16, fontSize: 15, fontWeight: "600" },
+  pageTitle: { fontSize: 24, fontWeight: "800", color: "#000", marginBottom: 20 },
+  kpiGrid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -6, marginBottom: 20 },
   kpiCard: {
-    flex: 1, minWidth: "45%", backgroundColor: "rgba(255,255,255,0.03)",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.06)", borderRadius: 16, padding: 16,
+    width: "47%", margin: "1.5%", backgroundColor: "#FFF",
+    borderRadius: 24, padding: 20,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2,
   },
-  kpiCardAlert: { borderColor: "rgba(239,68,68,0.4)" },
-  kpiTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
-  kpiTitle: { color: "#9ca3af", fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1 },
-  kpiIconBox: { padding: 6, borderRadius: 8 },
-  kpiValue: { fontSize: 28, fontWeight: "800", color: "#fff", marginBottom: 6 },
-  kpiTrendRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  trendBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  kpiCardAlert: { borderColor: "#FEE2E2", borderWidth: 1 },
+  kpiTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 },
+  kpiIconBox: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  kpiTitle: { color: "#828282", fontSize: 13, fontWeight: "600" },
+  kpiValue: { fontSize: 24, fontWeight: "800", color: "#000", marginBottom: 2 },
+  trendBadge: { flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 6, paddingVertical: 4, borderRadius: 20 },
   trendText: { fontSize: 11, fontWeight: "700" },
-  trendSuffix: { color: "#6b7280", fontSize: 10, fontWeight: "500" },
   chartCard: {
-    backgroundColor: "rgba(255,255,255,0.03)",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.06)",
-    borderRadius: 20, padding: 16, marginBottom: 16,
+    backgroundColor: "#FFF",
+    borderRadius: 24, padding: 24, marginBottom: 16,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2,
   },
-  chartTitle: { fontSize: 16, fontWeight: "700", color: "#fff", marginBottom: 16 },
-  barChart: { flexDirection: "row", alignItems: "flex-end", height: 110, gap: 8 },
+  chartHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
+  chartTitle: { fontSize: 16, fontWeight: "800", color: "#000", marginBottom: 20 },
+  barChart: { flexDirection: "row", alignItems: "flex-end", height: 120, gap: 10 },
   barColumn: { flex: 1, alignItems: "center", justifyContent: "flex-end" },
-  bar: { width: "100%", borderRadius: 4, minHeight: 4 },
-  barLabel: { color: "#6b7280", fontSize: 9, fontWeight: "600", marginTop: 4 },
-  stockRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 },
-  stockName: { color: "#d1d5db", fontSize: 12, fontWeight: "600", width: 90 },
-  stockBarBg: { flex: 1, height: 8, backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 100, overflow: "hidden" },
+  bar: { width: "100%", borderRadius: 6, minHeight: 6 },
+  barLabel: { color: "#828282", fontSize: 10, fontWeight: "600", marginTop: 8 },
+  stockRow: { marginBottom: 16 },
+  stockInfo: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
+  stockName: { color: "#000", fontSize: 14, fontWeight: "600" },
+  stockBarBg: { height: 8, backgroundColor: "#F3F4F6", borderRadius: 100, overflow: "hidden" },
   stockBarFill: { height: "100%", borderRadius: 100 },
-  stockCount: { fontSize: 12, fontWeight: "700", width: 36, textAlign: "right" },
+  stockCount: { fontSize: 13, fontWeight: "700" },
   alertRowOrange: {
-    flexDirection: "row", alignItems: "center", gap: 10, padding: 12,
-    backgroundColor: "rgba(249,115,22,0.1)", borderWidth: 1, borderColor: "rgba(249,115,22,0.3)",
-    borderRadius: 12, marginBottom: 8,
+    flexDirection: "row", alignItems: "center", gap: 12, padding: 16,
+    backgroundColor: "#FFFBEB", borderWidth: 1, borderColor: "#FEF3C7",
+    borderRadius: 16, marginBottom: 10,
   },
-  alertTextOrange: { color: "#fb923c", fontSize: 13, fontWeight: "500", flex: 1 },
+  alertTextOrange: { color: "#D97706", fontSize: 14, fontWeight: "500", flex: 1, lineHeight: 20 },
   alertRowRed: {
-    flexDirection: "row", alignItems: "center", gap: 10, padding: 12,
-    backgroundColor: "rgba(239,68,68,0.1)", borderWidth: 1, borderColor: "rgba(239,68,68,0.3)",
-    borderRadius: 12, marginBottom: 8,
+    flexDirection: "row", alignItems: "center", gap: 12, padding: 16,
+    backgroundColor: "#FEF2F2", borderWidth: 1, borderColor: "#FEE2E2",
+    borderRadius: 16, marginBottom: 10,
   },
-  alertTextRed: { color: "#f87171", fontSize: 13, fontWeight: "500", flex: 1 },
+  alertTextRed: { color: "#DC2626", fontSize: 14, fontWeight: "500", flex: 1, lineHeight: 20 },
 });
+

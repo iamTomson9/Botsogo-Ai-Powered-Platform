@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../hooks/useAuth';
 import AdminDashboard from '../../components/Admin/AdminDashboard';
-import { LogOut } from 'lucide-react-native';
+import { LogOut, ShieldCheck } from 'lucide-react-native';
 
 export default function AdminScreen() {
   const { user, logout } = useAuth();
@@ -11,31 +11,47 @@ export default function AdminScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.topBar}>
-        <View>
-          <Text style={styles.greeting}>Administrator</Text>
-          <Text style={styles.userName}>{user?.name || 'Admin'}</Text>
+        <View style={styles.userInfo}>
+          <View style={styles.avatar}>
+            <ShieldCheck color="#5BAFB8" size={24} />
+          </View>
+          <View>
+            <Text style={styles.role}>System Administrator</Text>
+            <Text style={styles.userName}>{user?.name || 'Admin'}</Text>
+          </View>
         </View>
         <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
-          <LogOut color="#9ca3af" size={20} />
+          <LogOut color="#828282" size={20} />
         </TouchableOpacity>
       </View>
-      <AdminDashboard />
+      <View style={styles.container}>
+        <AdminDashboard />
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#011c16' },
+  safe: { flex: 1, backgroundColor: '#F8F8F8' },
   topBar: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 20, paddingVertical: 16,
-    borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)',
+    paddingHorizontal: 24, paddingVertical: 20,
+    backgroundColor: '#FFF',
+    borderBottomWidth: 1, borderBottomColor: '#E5E7EB',
   },
-  greeting: { color: '#6b7280', fontSize: 13, fontWeight: '500' },
-  userName: { color: '#fff', fontSize: 20, fontWeight: '800' },
-  logoutBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+  userInfo: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  avatar: {
+    width: 48, height: 48, borderRadius: 24,
+    backgroundColor: '#F0F9FA',
     alignItems: 'center', justifyContent: 'center',
   },
+  role: { color: '#828282', fontSize: 13, fontWeight: '500' },
+  userName: { color: '#000', fontSize: 18, fontWeight: '700' },
+  logoutBtn: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  container: { flex: 1, padding: 20 },
 });
+
