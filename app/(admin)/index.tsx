@@ -1,11 +1,11 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../hooks/useAuth';
 import AdminDashboard from '../../components/Admin/AdminDashboard';
 import { LogOut, ShieldCheck } from 'lucide-react-native';
 
-export default function AdminScreen() {
+export default function AdminHomeScreen() {
   const { user, logout } = useAuth();
 
   return (
@@ -24,9 +24,9 @@ export default function AdminScreen() {
           <LogOut color="#828282" size={20} />
         </TouchableOpacity>
       </View>
-      <View style={styles.container}>
+      <ScrollView style={styles.container}>
         <AdminDashboard />
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -54,4 +54,3 @@ const styles = StyleSheet.create({
   },
   container: { flex: 1, padding: 20 },
 });
-

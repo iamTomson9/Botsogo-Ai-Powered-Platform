@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -20,7 +20,7 @@ const MOCK_CLINICS = [
   { id: 'c3', name: 'Tlokweng Clinic', latitude: -24.6582, longitude: 25.9531, distance: 8.7, currentQueue: 89, estimatedWait: 120 },
 ];
 
-export default function PatientScreen() {
+export default function PatientHomeScreen() {
   const { user, logout } = useAuth();
   const [clinics] = useState(MOCK_CLINICS);
   const [refreshing, setRefreshing] = useState(false);
@@ -32,7 +32,6 @@ export default function PatientScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      {/* Top bar */}
       <View style={styles.topBar}>
         <View style={styles.userInfo}>
           <View style={styles.avatar}>
@@ -85,4 +84,3 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: { padding: 20, paddingBottom: 40 },
 });
-
