@@ -72,7 +72,6 @@ export default function SymptomChecker() {
           <ActivityIndicator color="#fff" />
         ) : (
           <>
-            <Activity color="#fff" size={18} />
             <Text style={styles.btnText}>Analyze Symptoms</Text>
           </>
         )}

@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useAuth } from "../../hooks/useAuth";
-import { Hospital, Clock, ArrowRight, CheckCircle2, XCircle } from "lucide-react-native";
+import { Hospital, Clock, CheckCircle2, XCircle } from "lucide-react-native";
 
 export default function BookAppointment({ clinics }: { clinics: any[] }) {
   const { user } = useAuth();
@@ -88,7 +88,6 @@ export default function BookAppointment({ clinics }: { clinics: any[] }) {
             ) : (
               <>
                 <Text style={styles.primaryBtnText}>Join Virtual Queue</Text>
-                <ArrowRight color="#fff" size={20} />
               </>
             )}
           </TouchableOpacity>

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AiHcpLogo } from './AiHcpLogo';
+import { ChevronRight } from 'lucide-react-native';
 
 const { width, height } = Dimensions.get('window');
 
@@ -110,7 +111,7 @@ export default function OnboardingScreen() {
 
           {/* Next arrow button */}
           <TouchableOpacity style={styles.nextBtn} onPress={goNext}>
-            <Text style={styles.nextArrow}>→</Text>
+            <ChevronRight color="#fff" size={28} />
           </TouchableOpacity>
         </View>
       </View>

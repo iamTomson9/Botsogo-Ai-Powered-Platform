@@ -14,7 +14,7 @@ import {
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useAuth } from "../../hooks/useAuth";
 import { AiHcpLogo } from "../Startup/AiHcpLogo";
-import { Mail, Lock, User, ArrowRight, CheckCircle2 } from "lucide-react-native";
+import { Mail, Lock, User, CheckCircle2 } from "lucide-react-native";
 
 export default function LoginScreen() {
   const { login, signup } = useAuth();
@@ -149,7 +149,6 @@ export default function LoginScreen() {
               ) : (
                 <>
                   <Text style={styles.btnText}>{isLogin ? "Login" : "Sign Up"}</Text>
-                  <ArrowRight color="#fff" size={20} />
                 </>
               )}
             </TouchableOpacity>
