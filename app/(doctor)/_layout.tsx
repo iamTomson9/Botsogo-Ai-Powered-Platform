@@ -49,13 +49,41 @@ export default function DoctorLayout() {
         name="messages"
         options={{
           title: 'Messages',
-          tabBarIcon: ({ color }) => <FontAwesome5 name="envelope" size={24} color={color} />,
+          tabBarIcon: ({ color }) => <FontAwesome5 name="envelope" size={22} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="diagnostics"
+        options={{
+          title: 'Diagnostics',
+          tabBarIcon: ({ color }) => <FontAwesome5 name="x-ray" size={22} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="escalations"
+        options={{
+          title: 'Escalations',
+          tabBarIcon: ({ color }) => <FontAwesome5 name="exclamation-circle" size={22} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="medications"
+        options={{
+          title: 'Medications',
+          tabBarIcon: ({ color }) => <FontAwesome5 name="pills" size={22} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="transcription"
+        options={{
+          title: 'Transcribe',
+          tabBarIcon: ({ color }) => <FontAwesome5 name="microphone" size={22} color={color} />,
         }}
       />
       <Tabs.Screen
         name="chat/[id]"
         options={{
-          href: null, // Hides this from the bottom tab bar
+          href: null,
           title: 'Chat',
         }}
       />

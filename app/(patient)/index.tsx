@@ -43,10 +43,16 @@ export default function PatientDashboard() {
             onPress={() => router.push('/(patient)/clinics')} 
           />
           <ActionCard 
-            title="My Appointments" 
-            icon="calendar-alt"
-            description="View or reschedule your upcoming visits."
-            onPress={() => {}} 
+            title="Book Appointment" 
+            icon="calendar-plus"
+            description="Reserve your spot at a nearby hospital or clinic."
+            onPress={() => router.push('/(patient)/book-appointment' as any)} 
+          />
+          <ActionCard 
+            title="My Queue" 
+            icon="clipboard-list"
+            description="Track your position and estimated wait time."
+            onPress={() => router.push('/(patient)/my-queue' as any)} 
           />
           <ActionCard 
             title="Health Records" 

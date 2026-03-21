@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform, Modal, Image, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform, Modal, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
+import { WebView } from 'react-native-webview';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { useAuth } from '../../hooks/useAuth';
@@ -168,40 +169,25 @@ export default function ChatInterface({ isDoctorView }: { isDoctorView: boolean 
         </View>
       </KeyboardAvoidingView>
 
-      {/* Simulated Call Modal Overlay */}
+      {/* Live WebRTC Call Modal Overlay */}
       <Modal visible={isCalling} animationType="slide" transparent={false}>
-        <View style={[styles.callContainer, isVideo && { backgroundColor: '#1e293b' }]}>
-          {isVideo && (
-            <View style={styles.videoPlaceholder}>
-              <FontAwesome5 name="user" size={100} color="#475569" />
-              <View style={styles.pipVideo} />
-            </View>
+        <View style={styles.callContainer}>
+          {isCalling && chatId && (
+            <WebView
+              source={{ uri: `https://meet.jit.si/BotsogoHealth_${chatId}#config.startWithVideoMuted=${!isVideo}&config.startWithAudioMuted=false` }}
+              style={{ flex: 1, width: '100%', backgroundColor: '#0f172a' }}
+              allowsInlineMediaPlayback={true}
+              mediaPlaybackRequiresUserAction={false}
+              javaScriptEnabled={true}
+              domStorageEnabled={true}
+              originWhitelist={['*']}
+            />
           )}
 
-          <View style={[styles.callHeader, isVideo && { position: 'absolute', top: 60, alignSelf: 'center' }]}>
-            <Text style={[styles.callName, isVideo && { color: '#fff' }]}>{name || 'Unknown'}</Text>
-            <Text style={[styles.callStatus, isVideo && { color: '#cbd5e1' }]}>
-              {callDuration < 3 ? 'Connecting...' : formatTime(callDuration - 3)}
-            </Text>
-          </View>
-
-          {!isVideo && (
-            <View style={styles.audioAvatar}>
-               <FontAwesome5 name={isDoctorView ? "user" : "user-md"} size={60} color="#fff" />
-            </View>
-          )}
-
-          <View style={styles.callControls}>
-            <TouchableOpacity style={styles.controlBtn}>
-              <FontAwesome5 name="microphone-slash" size={24} color="#fff" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.controlBtn}>
-              <FontAwesome5 name={isVideo ? "video-slash" : "volume-up"} size={24} color="#fff" />
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.controlBtn, styles.endCallBtn]} onPress={endCall}>
-              <FontAwesome5 name="phone-slash" size={24} color="#fff" />
-            </TouchableOpacity>
-          </View>
+          {/* Floating End Call Button to manually close the modal */}
+          <TouchableOpacity style={[styles.controlBtn, styles.endCallBtn, styles.floatingEndCall]} onPress={endCall}>
+            <FontAwesome5 name="phone-slash" size={24} color="#fff" />
+          </TouchableOpacity>
         </View>
       </Modal>
 
@@ -238,14 +224,8 @@ const styles = StyleSheet.create({
   sendBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', marginLeft: 12 },
   
   // Call Overlay Styles
-  callContainer: { flex: 1, backgroundColor: '#f8fafc', justifyContent: 'space-between', paddingVertical: 60, alignItems: 'center' },
-  callHeader: { alignItems: 'center' },
-  callName: { fontSize: 28, fontWeight: 'bold', color: '#0f172a', marginBottom: 8 },
-  callStatus: { fontSize: 16, color: '#64748b' },
-  audioAvatar: { width: 140, height: 140, borderRadius: 70, backgroundColor: '#94a3b8', justifyContent: 'center', alignItems: 'center', marginTop: -60 },
-  callControls: { flexDirection: 'row', gap: 24, paddingHorizontal: 40, width: '100%', justifyContent: 'center', position: 'absolute', bottom: 60 },
+  callContainer: { flex: 1, backgroundColor: '#0f172a' },
   controlBtn: { width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
   endCallBtn: { backgroundColor: '#ef4444' },
-  videoPlaceholder: { ...StyleSheet.absoluteFillObject, backgroundColor: '#0f172a', justifyContent: 'center', alignItems: 'center' },
-  pipVideo: { position: 'absolute', bottom: 140, right: 20, width: 100, height: 150, backgroundColor: '#334155', borderRadius: 12, borderWidth: 2, borderColor: '#475569' }
+  floatingEndCall: { position: 'absolute', bottom: 40, alignSelf: 'center', zIndex: 100, shadowColor: '#000', shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5 }
 });

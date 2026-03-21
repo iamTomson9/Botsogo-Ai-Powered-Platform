@@ -66,6 +66,14 @@ export default function PatientLayout() {
           title: 'Chat',
         }}
       />
+      <Tabs.Screen
+        name="book-appointment"
+        options={{ href: null, title: 'Book Appointment' }}
+      />
+      <Tabs.Screen
+        name="my-queue"
+        options={{ href: null, title: 'My Queue' }}
+      />
     </Tabs>
   );
 }
