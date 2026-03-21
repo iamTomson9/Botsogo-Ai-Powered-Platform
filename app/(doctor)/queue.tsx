@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
 import { useAuth } from '../../hooks/useAuth';
-import { subscribeToHospitalQueue, updateAppointmentStatus, Appointment } from '../../services/appointmentService';
+import { subscribeToHospitalQueue, updateAppointmentStatus, acceptAppointment, Appointment } from '../../services/appointmentService';
 
 export default function PatientQueue() {
   const { user } = useAuth();
@@ -20,6 +20,15 @@ export default function PatientQueue() {
     high: '#ef4444',
     critical: '#b91c1c',
     clinical: '#6d28d9',
+  };
+
+  const handleAccept = async (appointment: Appointment) => {
+    if (!user) return;
+    try {
+      await acceptAppointment(appointment.id!, user.uid, user.displayName || 'Doctor');
+    } catch (err) {
+      console.error("Error accepting appointment:", err);
+    }
   };
 
   useEffect(() => {
@@ -87,10 +96,10 @@ export default function PatientQueue() {
           {item.status === 'waiting' && (
             <TouchableOpacity
               style={[styles.actionButton, styles.primaryButton]}
-              onPress={() => updateAppointmentStatus(item.id!, 'in-progress')}
+              onPress={() => item.triage ? handleAccept(item) : updateAppointmentStatus(item.id!, 'in-progress')}
             >
-              <FontAwesome5 name="play-circle" size={14} color="#fff" style={{ marginRight: 6 }} />
-              <Text style={styles.primaryButtonText}>Call In</Text>
+              <FontAwesome5 name={item.triage ? "hand-holding-medical" : "play-circle"} size={14} color="#fff" style={{ marginRight: 6 }} />
+              <Text style={styles.primaryButtonText}>{item.triage ? 'Accept Patient' : 'Call In'}</Text>
             </TouchableOpacity>
           )}
           {item.status === 'in-progress' && (
@@ -173,6 +182,13 @@ export default function PatientQueue() {
             </View>
 
             <ScrollView contentContainerStyle={{ padding: 24, gap: 20 }}>
+              <View style={styles.briefSection}>
+                <Text style={styles.briefLabel}>Patient Details</Text>
+                <Text style={styles.briefValue}>
+                  {selectedAppointment.patientName} • {selectedAppointment.triage.patientAge} yrs • {selectedAppointment.triage.patientGender}
+                </Text>
+              </View>
+
               <View style={styles.briefSection}>
                 <Text style={styles.briefLabel}>Patient Summary</Text>
                 <Text style={styles.briefValue}>{selectedAppointment.triage.patientSummary}</Text>

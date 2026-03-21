@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors } from '../../constants/Colors';
+import { useAuth } from '../../hooks/useAuth';
 import { sendChatRequest, handleToolCalls, Message } from '../../services/aiService';
 
 const SEVERITY_COLORS: Record<string, string> = {
@@ -15,43 +16,18 @@ const SEVERITY_COLORS: Record<string, string> = {
 };
 
 const TriageCard = ({ report, onDone }: { report: any, onDone: () => void }) => {
-  const color = SEVERITY_COLORS[report.severity] || Colors.light.primary;
-  
   return (
-    <View style={[styles.triageCard, { borderLeftColor: color }]}>
-      <View style={styles.triageHeader}>
-        <View style={[styles.severityBadge, { backgroundColor: color + '20' }]}>
-          <Text style={[styles.severityText, { color }]}>{report.triageCategory.toUpperCase()}</Text>
-        </View>
-        <Text style={styles.urgencyText}>Urgency: {report.urgency}</Text>
+    <View style={styles.triageCard}>
+      <View style={styles.successCircle}>
+        <FontAwesome5 name="check" size={24} color="#fff" />
       </View>
+      <Text style={styles.triageTitle}>Appointment Booked!</Text>
+      <Text style={styles.triageSummary}>
+        Your request has been sent to **{report.hospitalName || "General Hospital"}**. 
+        A doctor will review your triage summary shortly.
+      </Text>
 
-      <Text style={styles.triageTitle}>{report.chiefComplaint}</Text>
-      <Text style={styles.triageSummary}>{report.patientSummary}</Text>
-
-      <Text style={styles.triageSectionLabel}>RECOMMENDED SCREENINGS</Text>
-      <View style={styles.chipRow}>
-        {report.recommendedScreenings.map((s: string, i: number) => (
-          <View key={i} style={styles.triageChip}>
-            <Text style={styles.triageChipText}>{s}</Text>
-          </View>
-        ))}
-      </View>
-
-      <Text style={styles.triageSectionLabel}>DOCTOR RECOMMENDATIONS</Text>
-      {report.recommendedActions.map((a: string, i: number) => (
-        <View key={i} style={styles.actionRow}>
-          <FontAwesome5 name="check-circle" size={12} color={color} />
-          <Text style={styles.actionText}>{a}</Text>
-        </View>
-      ))}
-
-      <View style={styles.bookedBanner}>
-        <FontAwesome5 name="calendar-check" size={14} color="#065f46" />
-        <Text style={styles.bookedText}>Appointment booked at {report.hospitalName || "General Hospital"}</Text>
-      </View>
-
-      <TouchableOpacity style={[styles.queueBtn, { backgroundColor: color }]} onPress={onDone}>
+      <TouchableOpacity style={styles.queueBtn} onPress={onDone}>
         <Text style={styles.queueBtnText}>View My Queue</Text>
       </TouchableOpacity>
     </View>
@@ -60,12 +36,19 @@ const TriageCard = ({ report, onDone }: { report: any, onDone: () => void }) => 
 
 export default function ChatSymptomChecker() {
   const router = useRouter();
-  const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', content: 'Hello John! I am Botsogo AI. I see your next appointment is unscheduled. How are you feeling today?' }
-  ]);
+  const { user } = useAuth();
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    if (user && messages.length === 0) {
+      setMessages([
+        { role: 'assistant', content: `Hello ${user.displayName || 'there'}! I am Botsogo AI. I see your next appointment is unscheduled. How are you feeling today?` }
+      ]);
+    }
+  }, [user]);
 
   useEffect(() => {
     // Scroll to bottom when messages update
@@ -85,13 +68,14 @@ export default function ChatSymptomChecker() {
     setIsLoading(true);
 
     try {
-      let aiResponse = await sendChatRequest(newHistory);
+      const userContext = user ? { uid: user.uid, name: user.displayName || 'Patient' } : undefined;
+      let aiResponse = await sendChatRequest(newHistory, userContext);
       newHistory.push(aiResponse);
       setMessages([...newHistory]);
 
       // Handle function calls if the AI decides to perform actions
       if (aiResponse.tool_calls && aiResponse.tool_calls.length > 0) {
-        const toolResponses = await handleToolCalls(aiResponse.tool_calls);
+        const toolResponses = await handleToolCalls(aiResponse.tool_calls, userContext);
         
         // Push tool responses to history
         newHistory.push(...toolResponses);
@@ -108,7 +92,7 @@ export default function ChatSymptomChecker() {
         }
 
         // Re-request AI logic with tool results
-        const finalResponse = await sendChatRequest(newHistory);
+        const finalResponse = await sendChatRequest(newHistory, userContext);
         newHistory.push(finalResponse);
         setMessages([...newHistory]);
       }
@@ -317,105 +301,45 @@ const styles = StyleSheet.create({
   },
   triageCard: {
     backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 20,
+    borderRadius: 24,
+    padding: 24,
     marginBottom: 20,
-    borderLeftWidth: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 4,
-  },
-  triageHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    shadowColor: Colors.light.primary,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 8,
   },
-  severityBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  severityText: {
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  urgencyText: {
-    fontSize: 12,
-    color: '#64748b',
-    fontWeight: '600',
+  successCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#10b981',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   triageTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#0f172a',
-    marginBottom: 6,
-  },
-  triageSummary: {
-    fontSize: 14,
-    color: '#475569',
-    lineHeight: 20,
-    marginBottom: 16,
-  },
-  triageSectionLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#94a3b8',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 8,
-    marginTop: 8,
-  },
-  chipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
     marginBottom: 12,
   },
-  triageChip: {
-    backgroundColor: '#f1f5f9',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  triageChipText: {
-    fontSize: 12,
-    color: '#334155',
-    fontWeight: '600',
-  },
-  actionRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-    marginBottom: 8,
-  },
-  actionText: {
-    fontSize: 14,
-    color: '#334155',
-    flex: 1,
-  },
-  bookedBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#d1fae5',
-    padding: 12,
-    borderRadius: 12,
-    marginTop: 16,
-    marginBottom: 16,
-  },
-  bookedText: {
-    fontSize: 13,
-    color: '#065f46',
-    fontWeight: '600',
+  triageSummary: {
+    fontSize: 15,
+    color: '#475569',
+    lineHeight: 22,
+    textAlign: 'center',
+    marginBottom: 24,
   },
   queueBtn: {
+    backgroundColor: Colors.light.primary,
     paddingVertical: 14,
-    borderRadius: 12,
+    paddingHorizontal: 32,
+    borderRadius: 16,
+    width: '100%',
     alignItems: 'center',
-    justifyContent: 'center',
   },
   queueBtnText: {
     color: '#fff',

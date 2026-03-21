@@ -8,18 +8,16 @@ export interface Message {
   tool_call_id?: string;
 }
 
-// Mock Patient Context
-const PATIENT_CONTEXT = {
-  name: "John Doe",
-  age: 34,
-  gender: "Male",
-  medicalRecords: "Asthma, Hypertension",
-  allergies: "Penicillin",
-  nextAppointment: "None scheduled"
-};
+const getSystemPrompt = (userContext?: { name: string; age?: number; gender?: string; medicalRecords?: string; allergies?: string; nextAppointment?: string }) => {
+  const name = userContext?.name || "Patient";
+  const age = userContext?.age || 34;
+  const gender = userContext?.gender || "User";
+  const history = userContext?.medicalRecords || "None provided";
+  const allergies = userContext?.allergies || "None known";
+  const nextAppt = userContext?.nextAppointment || "None scheduled";
 
-const SYSTEM_PROMPT = `You are Botsogo Health AI Assistant. You are currently speaking with ${PATIENT_CONTEXT.name}, a ${PATIENT_CONTEXT.age} year old ${PATIENT_CONTEXT.gender}.
-Medical History: ${PATIENT_CONTEXT.medicalRecords}. Allergies: ${PATIENT_CONTEXT.allergies}. Next Appointment: ${PATIENT_CONTEXT.nextAppointment}.
+  return `You are Botsogo Health AI Assistant. You are currently speaking with ${name}, a ${age} year old ${gender}.
+Medical History: ${history}. Allergies: ${allergies}. Next Appointment: ${nextAppt}.
 
 Your duties:
 1. Answer health-related questions accurately and empathetic.
@@ -33,6 +31,7 @@ Your duties:
    - 'clinical': Follow-ups, chronic management, or non-acute clinical needs.
 5. Provide specific recommended screenings (e.g., "MRA for migraine vs headache") and doctor actions.
 Be professional, medical-grade, and reassuring.`;
+};
 
 const tools = [
   {
@@ -50,19 +49,21 @@ const tools = [
           recommendedScreenings: { type: "array", items: { type: "string" }, description: "Specific medical tests or screenings recommended" },
           recommendedActions: { type: "array", items: { type: "string" }, description: "Specific actions for the doctor to take" },
           urgency: { type: "string", enum: ["routine", "within-24h", "immediate"] },
-          hospitalName: { type: "string", description: "Choose a suitable hospital name from context or leave generic" }
+          hospitalName: { type: "string", description: "Choose a suitable hospital name from context or leave generic" },
+          patientAge: { type: "number", description: "The patient's age as mentioned in chat or known context" },
+          patientGender: { type: "string", description: "The patient's gender as mentioned in chat or known context" }
         },
-        required: ["chiefComplaint", "patientSummary", "severity", "triageCategory", "recommendedScreenings", "recommendedActions", "urgency"]
+        required: ["chiefComplaint", "patientSummary", "severity", "triageCategory", "recommendedScreenings", "recommendedActions", "urgency", "patientAge", "patientGender"]
       }
     }
   }
 ];
 
-export const sendChatRequest = async (messages: Message[]): Promise<Message> => {
+export const sendChatRequest = async (messages: Message[], userContext?: any): Promise<Message> => {
   try {
     const payload = {
-      model: "gemini-2.5-flash", // Powerful, completely free model by Google
-      messages: [{ role: "system", content: SYSTEM_PROMPT }, ...messages],
+      model: "gemini-2.5-flash", 
+      messages: [{ role: "system", content: getSystemPrompt(userContext) }, ...messages],
       tools: tools,
       tool_choice: "auto",
     };
@@ -88,7 +89,7 @@ export const sendChatRequest = async (messages: Message[]): Promise<Message> => 
   }
 };
 
-export const handleToolCalls = async (toolCalls: any[]): Promise<Message[]> => {
+export const handleToolCalls = async (toolCalls: any[], userContext?: { uid: string, name: string, [key: string]: any }): Promise<Message[]> => {
   const toolResponses: Message[] = [];
   
   for (const toolCall of toolCalls) {
@@ -112,14 +113,15 @@ export const handleToolCalls = async (toolCalls: any[]): Promise<Message[]> => {
         console.warn("Could not load clinics data.");
       }
 
-      // Hardcode a user ID for demo purposes
-      const userId = "demo-user-123"; 
+      // Use dynamic user context
+      const userId = userContext?.uid || "anonymous-patient"; 
+      const patientName = userContext?.name || "Patient";
 
       try {
         const { bookAppointment } = require('./appointmentService');
         await bookAppointment(
           userId,
-          PATIENT_CONTEXT.name,
+          patientName,
           bookedHospitalName, // as ID for demo
           bookedHospitalName,
           args.chiefComplaint,
@@ -131,10 +133,24 @@ export const handleToolCalls = async (toolCalls: any[]): Promise<Message[]> => {
             recommendedScreenings: args.recommendedScreenings,
             recommendedActions: args.recommendedActions,
             urgency: args.urgency,
+            patientAge: args.patientAge,
+            patientGender: args.patientGender,
           }
         );
+
+        // Escalation Chat: Post a system message to a mock chat ID
+        // In a real app, this would be the actual chat between the patient and current medical team
+        const chatId = "doctor_escalation_channel"; 
+        const { addDoc, collection, serverTimestamp } = require('firebase/firestore');
+        const { db } = require('../firebase/config');
+        
+        await addDoc(collection(db, 'chats', chatId, 'messages'), {
+          text: `🚨 AI TRIAGE ESCALATION: ${args.triageCategory.toUpperCase()}\n\nPatient: ${patientName} (${args.patientAge}${args.patientGender ? ', ' + args.patientGender : ''})\nComplaint: ${args.chiefComplaint}\n\nSummary: ${args.patientSummary}\n\nRecommended Actions: ${args.recommendedActions.join(", ")}`,
+          senderId: "system_ai",
+          createdAt: serverTimestamp()
+        });
       } catch (err) {
-        console.error("Booking error:", err);
+        console.error("Booking or Escalation error:", err);
       }
 
       result = JSON.stringify({

@@ -68,9 +68,16 @@ export default function MyQueue() {
         )}
 
         {item.status === 'in-progress' && (
-          <View style={[styles.queueInfoRow, { backgroundColor: '#d1fae5', borderRadius: 12, marginTop: 12, padding: 12, justifyContent: 'center', alignItems: 'center' }]}>
-            <FontAwesome5 name="stethoscope" size={16} color="#10b981" />
-            <Text style={{ marginLeft: 8, color: '#10b981', fontWeight: '700', fontSize: 15 }}>You are currently being seen!</Text>
+          <View style={[styles.queueInfoRow, { backgroundColor: '#d1fae5', borderRadius: 12, marginTop: 12, padding: 12, flexDirection: 'column', alignItems: 'center' }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+              <FontAwesome5 name="stethoscope" size={16} color="#10b981" />
+              <Text style={{ marginLeft: 8, color: '#10b981', fontWeight: '700', fontSize: 15 }}>You are currently being seen!</Text>
+            </View>
+            {item.acceptedBy && (
+              <Text style={{ color: '#065f46', fontSize: 13, fontWeight: '600' }}>
+                Accepted by Dr. {item.acceptedBy.name}
+              </Text>
+            )}
           </View>
         )}
 
