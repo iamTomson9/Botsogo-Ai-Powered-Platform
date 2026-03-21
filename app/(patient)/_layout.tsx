@@ -52,6 +52,20 @@ export default function PatientLayout() {
           tabBarIcon: ({ color }) => <FontAwesome5 name="hospital" size={24} color={color} />,
         }}
       />
+      <Tabs.Screen
+        name="messages"
+        options={{
+          title: 'Messages',
+          tabBarIcon: ({ color }) => <FontAwesome5 name="envelope" size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="chat/[id]"
+        options={{
+          href: null, // Hides this from the bottom tab bar
+          title: 'Chat',
+        }}
+      />
     </Tabs>
   );
 }

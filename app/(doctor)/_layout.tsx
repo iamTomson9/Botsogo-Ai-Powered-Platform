@@ -45,6 +45,20 @@ export default function DoctorLayout() {
           tabBarIcon: ({ color }) => <FontAwesome5 name="clipboard-list" size={24} color={color} />,
         }}
       />
+      <Tabs.Screen
+        name="messages"
+        options={{
+          title: 'Messages',
+          tabBarIcon: ({ color }) => <FontAwesome5 name="envelope" size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="chat/[id]"
+        options={{
+          href: null, // Hides this from the bottom tab bar
+          title: 'Chat',
+        }}
+      />
     </Tabs>
   );
 }
