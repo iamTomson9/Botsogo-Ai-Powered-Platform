@@ -89,7 +89,7 @@ export const sendChatRequest = async (messages: Message[], userContext?: any): P
   }
 };
 
-export const handleToolCalls = async (toolCalls: any[], userContext?: { uid: string, name: string, [key: string]: any }): Promise<Message[]> => {
+export const handleToolCalls = async (toolCalls: any[], userContext?: { uid?: string, name?: string, currentLocation?: { latitude: number, longitude: number } | null, [key: string]: any }): Promise<Message[]> => {
   const toolResponses: Message[] = [];
   
   for (const toolCall of toolCalls) {
@@ -102,27 +102,76 @@ export const handleToolCalls = async (toolCalls: any[], userContext?: { uid: str
       console.log("TOOL CALL [analyseAndBook]:", args);
       
       let bookedHospitalName = args.hospitalName || "General Hospital";
+      let distanceKm: number | null = null;
+      let etaMinutes: number | null = null;
+
       try {
-        const clinicsData = require('../../clinics.json');
+        const clinicsData = require('../clinics.json');
         const activeClinics = clinicsData.filter((c: any) => c.operationalStatus?.display === 'Active' && c.name);
+        
         if (activeClinics.length > 0 && !args.hospitalName) {
-          const randomNearest = activeClinics[Math.floor(Math.random() * Math.min(20, activeClinics.length))];
-          bookedHospitalName = randomNearest.name;
+          if (userContext?.currentLocation) {
+            const { latitude, longitude } = userContext.currentLocation;
+            
+            // Haversine formula helper
+            const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+              const R = 6371;
+              const dLat = (lat2 - lat1) * (Math.PI / 180);
+              const dLon = (lon2 - lon1) * (Math.PI / 180);
+              const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                        Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+                        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+              const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+              return R * c;
+            };
+
+            const sortedClinics = activeClinics.map((c: any) => ({
+              ...c,
+              distance: c.position ? calculateDistance(latitude, longitude, c.position.latitude, c.position.longitude) : Infinity
+            })).sort((a: any, b: any) => a.distance - b.distance);
+
+            const nearest = sortedClinics[0];
+            bookedHospitalName = nearest.name;
+            if (nearest.distance !== Infinity) {
+              const d = nearest.distance as number;
+              distanceKm = d;
+              // Mock ETA: 2 mins per km + 5 mins buffer
+              etaMinutes = Math.round(d * 2 + 5);
+            }
+          } else {
+            const randomNearest = activeClinics[Math.floor(Math.random() * Math.min(20, activeClinics.length))];
+            bookedHospitalName = randomNearest.name;
+          }
         }
       } catch (err) {
-        console.warn("Could not load clinics data.");
+        console.warn("Could not load clinics data or calculate distance.");
       }
 
       // Use dynamic user context
       const userId = userContext?.uid || "anonymous-patient"; 
-      const patientName = userContext?.name || "Patient";
+      let patientName = userContext?.name || "Patient";
+      let patientAge = args.patientAge || 34;
+      let patientGender = userContext?.gender || args.patientGender || "Unknown";
+
+      // Calculate age from DOB if available
+      if (userContext?.dob) {
+          const birthDate = new Date(userContext.dob);
+          const today = new Date();
+          let age = today.getFullYear() - birthDate.getFullYear();
+          const m = today.getMonth() - birthDate.getMonth();
+          if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+              age--;
+          }
+          if (!isNaN(age)) patientAge = age;
+      }
 
       try {
         const { bookAppointment } = require('./appointmentService');
-        await bookAppointment(
+        
+        const fullAppointment = await bookAppointment(
           userId,
           patientName,
-          bookedHospitalName, // as ID for demo
+          bookedHospitalName, 
           bookedHospitalName,
           args.chiefComplaint,
           {
@@ -133,29 +182,40 @@ export const handleToolCalls = async (toolCalls: any[], userContext?: { uid: str
             recommendedScreenings: args.recommendedScreenings,
             recommendedActions: args.recommendedActions,
             urgency: args.urgency,
-            patientAge: args.patientAge,
-            patientGender: args.patientGender,
-          }
+            patientAge: patientAge,
+            patientGender: patientGender,
+          },
+          etaMinutes || 0
         );
-
+        const appointmentId = fullAppointment.id;
+ 
         // Escalation Chat: Post a system message to a mock chat ID
         // In a real app, this would be the actual chat between the patient and current medical team
         const chatId = "doctor_escalation_channel"; 
         const { addDoc, collection, serverTimestamp } = require('firebase/firestore');
         const { db } = require('../firebase/config');
         
-        await addDoc(collection(db, 'chats', chatId, 'messages'), {
-          text: `🚨 AI TRIAGE ESCALATION: ${args.triageCategory.toUpperCase()}\n\nPatient: ${patientName} (${args.patientAge}${args.patientGender ? ', ' + args.patientGender : ''})\nComplaint: ${args.chiefComplaint}\n\nSummary: ${args.patientSummary}\n\nRecommended Actions: ${args.recommendedActions.join(", ")}`,
-          senderId: "system_ai",
+        // 3. Create Escalation Record for Doctor's Dashboard
+        await addDoc(collection(db, 'escalations'), {
+          patientId: userId,
+          patientName: patientName,
+          hospitalName: bookedHospitalName,
+          summary: args.patientSummary,
+          severity: args.severity, // low | medium | high
+          status: 'pending',
+          appointmentId: appointmentId,
+          aiChatHistory: (userContext?.messages || []).filter((m: any) => m.role === 'user' || m.role === 'assistant'),
           createdAt: serverTimestamp()
         });
-      } catch (err) {
-        console.error("Booking or Escalation error:", err);
+      } catch (e) {
+        console.error("Error in AI tool execution:", e);
       }
 
       result = JSON.stringify({
         status: "success",
         bookedHospital: bookedHospitalName,
+        distance: distanceKm,
+        eta: etaMinutes,
         triageReport: args,
         message: `Appointment booked at ${bookedHospitalName}. A triage report has been sent to the clinical team.`
       });

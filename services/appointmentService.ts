@@ -66,7 +66,8 @@ export const bookAppointment = async (
   hospitalId: string,
   hospitalName: string,
   reason: string,
-  triage?: Appointment['triage']
+  triage?: Appointment['triage'],
+  travelTimeMinutes: number = 0
 ): Promise<Appointment> => {
 
   // How many people are already waiting at this hospital?
@@ -79,7 +80,7 @@ export const bookAppointment = async (
   const snapshot = await getDocs(queueQuery);
   const currentQueueLength = snapshot.docs.length;
   const queuePosition = currentQueueLength + 1;
-  const estimatedWaitMinutes = queuePosition * AVG_CONSULT_MINUTES;
+  const estimatedWaitMinutes = (queuePosition * AVG_CONSULT_MINUTES) + travelTimeMinutes;
 
   const appointment: Omit<Appointment, 'id'> = {
     patientId,

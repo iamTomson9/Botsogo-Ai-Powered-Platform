@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import * as Location from 'expo-location';
 import { Colors } from '../../constants/Colors';
 import { useAuth } from '../../hooks/useAuth';
 import { sendChatRequest, handleToolCalls, Message } from '../../services/aiService';
@@ -24,7 +25,17 @@ const TriageCard = ({ report, onDone }: { report: any, onDone: () => void }) => 
       <Text style={styles.triageTitle}>Appointment Booked!</Text>
       <Text style={styles.triageSummary}>
         Your request has been sent to **{report.hospitalName || "General Hospital"}**. 
-        A doctor will review your triage summary shortly.
+        {report.distance && (
+            <Text style={{ fontWeight: '600', color: Colors.light.primary }}>
+               {"\n"}📍 {report.distance.toFixed(1)} km away
+            </Text>
+        )}
+        {report.eta && (
+            <Text style={{ fontWeight: '600' }}>
+               {" • "}🕒 ETA: {report.eta} mins
+            </Text>
+        )}
+        {"\n"}A doctor will review your triage summary shortly.
       </Text>
 
       <TouchableOpacity style={styles.queueBtn} onPress={onDone}>
@@ -40,6 +51,7 @@ export default function ChatSymptomChecker() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [currentLocation, setCurrentLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
 
   useEffect(() => {
@@ -49,6 +61,22 @@ export default function ChatSymptomChecker() {
       ]);
     }
   }, [user]);
+
+  useEffect(() => {
+    const getPermissions = async () => {
+        let { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+            console.warn("Location permission denied");
+            return;
+        }
+        let location = await Location.getCurrentPositionAsync({});
+        setCurrentLocation({
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude
+        });
+    };
+    getPermissions();
+  }, []);
 
   useEffect(() => {
     // Scroll to bottom when messages update
@@ -68,7 +96,18 @@ export default function ChatSymptomChecker() {
     setIsLoading(true);
 
     try {
-      const userContext = user ? { uid: user.uid, name: user.displayName || 'Patient' } : undefined;
+      const userContext = user ? { 
+          uid: user.uid, 
+          name: user.displayName || 'Patient',
+          dob: user.dob,
+          gender: user.gender,
+          currentLocation: currentLocation,
+          messages: newHistory // Pass the chat history
+      } : { 
+          currentLocation: currentLocation,
+          messages: newHistory 
+      };
+      
       let aiResponse = await sendChatRequest(newHistory, userContext);
       newHistory.push(aiResponse);
       setMessages([...newHistory]);
@@ -84,7 +123,13 @@ export default function ChatSymptomChecker() {
         // Check if any tool response contains a triage report
         const triageResponse = toolResponses.find(r => r.content && JSON.parse(r.content).triageReport);
         if (triageResponse) {
-          const report = JSON.parse(triageResponse.content!).triageReport;
+          const content = JSON.parse(triageResponse.content!);
+          const report = {
+              ...content.triageReport,
+              hospitalName: content.bookedHospital,
+              distance: content.distance,
+              eta: content.eta
+          };
           // Add a special pseudo-message to trigger the TriageCard rendering
           newHistory.push({ role: 'assistant', content: 'TRIAGE_REPORT_UI', tool_call_id: JSON.stringify(report) } as any);
           setMessages([...newHistory]);

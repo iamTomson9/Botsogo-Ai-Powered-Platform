@@ -8,46 +8,60 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { collection, query, where, onSnapshot, orderBy, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { Colors } from '../../constants/Colors';
+import { useRouter } from 'expo-router';
+import { useAuth } from '../../hooks/useAuth';
+import { acceptAppointment } from '../../services/appointmentService';
 
 type Escalation = {
   id: string;
   patientId: string;
   patientName: string;
   summary: string;
-  severity: 'low' | 'medium' | 'high';
+  severity: 'low' | 'moderate' | 'medium' | 'high' | 'critical' | 'clinical';
   status: 'pending' | 'acknowledged' | 'resolved';
+  appointmentId?: string;
+  hospitalName?: string;
+  aiChatHistory?: { role: string; content: string }[];
   createdAt: any;
 };
 
 const SEVERITY_CONFIG = {
-  high:   { color: '#ef4444', bg: '#fef2f2', icon: 'exclamation-circle', label: 'HIGH RISK' },
-  medium: { color: '#f59e0b', bg: '#fefce8', icon: 'exclamation-triangle', label: 'MEDIUM RISK' },
-  low:    { color: '#10b981', bg: '#f0fdf4', icon: 'info-circle', label: 'LOW RISK' },
+  high:     { color: '#ef4444', bg: '#fef2f2', icon: 'exclamation-circle', label: 'HIGH RISK' },
+  medium:   { color: '#f59e0b', bg: '#fefce8', icon: 'exclamation-triangle', label: 'MEDIUM RISK' },
+  low:      { color: '#10b981', bg: '#f0fdf4', icon: 'info-circle', label: 'LOW RISK' },
+  critical: { color: '#7f1d1d', bg: '#fef2f2', icon: 'dizzy', label: 'CRITICAL' },
+  clinical: { color: '#991b1b', bg: '#fef2f2', icon: 'procedures', label: 'CLINICAL' },
+  moderate: { color: '#f59e0b', bg: '#fefce8', icon: 'exclamation-triangle', label: 'MODERATE' },
+};
+
+const getSeverityCfg = (severity: string) => {
+  return SEVERITY_CONFIG[severity as keyof typeof SEVERITY_CONFIG] || SEVERITY_CONFIG.low;
 };
 
 export default function Escalations() {
+  const router = useRouter();
+  const { user } = useAuth();
   const [escalations, setEscalations] = useState<Escalation[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Escalation | null>(null);
 
   useEffect(() => {
-    // Listen for real escalations from Firestore
     const q = query(
       collection(db, 'escalations'),
-      where('status', 'in', ['pending', 'acknowledged']),
-      orderBy('createdAt', 'desc')
+      where('status', 'in', ['pending', 'acknowledged'])
     );
 
     const unsub = onSnapshot(q, (snap) => {
       const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as Escalation));
+      data.sort((a, b) => {
+        const timeA = a.createdAt?.toMillis?.() || 0;
+        const timeB = b.createdAt?.toMillis?.() || 0;
+        return timeB - timeA;
+      });
       setEscalations(data);
       setLoading(false);
-    }, () => {
-      // If Firestore is empty or index not yet built, show demo data
-      setEscalations([
-        { id: 'demo-1', patientId: 'p1', patientName: 'James Ndlovu', summary: 'Patient reports severe chest pain radiating to left arm. AI assessed as URGENT. Automatic appointment booked. Requires immediate doctor review.', severity: 'high', status: 'pending', createdAt: null },
-        { id: 'demo-2', patientId: 'p2', patientName: 'Refilwe Kgosi', summary: 'Patient described persistent shortness of breath during minimal activity for 3 days. AI recommends ECG and possible spirometry.', severity: 'medium', status: 'acknowledged', createdAt: null },
-      ]);
+    }, (err) => {
+      console.error("Escalation subscription error:", err);
       setLoading(false);
     });
     return () => unsub();
@@ -69,8 +83,24 @@ export default function Escalations() {
     setSelected(null);
   };
 
+  const handleAcceptAppointment = async (escalation: Escalation) => {
+    if (!user || !escalation.appointmentId) return;
+    
+    try {
+      await acceptAppointment(escalation.appointmentId, user.uid, user.name || user.displayName || 'Doctor');
+      await updateDoc(doc(db, 'escalations', escalation.id), { status: 'acknowledged' });
+      setSelected(null);
+      router.push({ 
+        pathname: '/(doctor)/chat/[id]', 
+        params: { id: escalation.patientId, name: escalation.patientName } 
+      } as any);
+    } catch (err) {
+      console.error("Error accepting from escalation dashboard:", err);
+    }
+  };
+
   const renderCard = ({ item }: { item: Escalation }) => {
-    const cfg = SEVERITY_CONFIG[item.severity];
+    const cfg = getSeverityCfg(item.severity);
     return (
       <TouchableOpacity style={[styles.card, { borderLeftColor: cfg.color }]} onPress={() => setSelected(item)}>
         <View style={styles.cardTop}>
@@ -129,17 +159,47 @@ export default function Escalations() {
               <View style={{ width: 22 }} />
             </View>
             <ScrollView contentContainerStyle={{ padding: 24, gap: 20 }}>
-              <View style={[styles.severityBadge, { backgroundColor: SEVERITY_CONFIG[selected.severity].bg, alignSelf: 'flex-start' }]}>
-                <FontAwesome5 name={SEVERITY_CONFIG[selected.severity].icon} size={14} color={SEVERITY_CONFIG[selected.severity].color} />
-                <Text style={[styles.severityText, { color: SEVERITY_CONFIG[selected.severity].color, fontSize: 14 }]}>
-                  {SEVERITY_CONFIG[selected.severity].label}
+              <View style={[styles.severityBadge, { backgroundColor: getSeverityCfg(selected.severity).bg, alignSelf: 'flex-start' }]}>
+                <FontAwesome5 name={getSeverityCfg(selected.severity).icon} size={14} color={getSeverityCfg(selected.severity).color} />
+                <Text style={[styles.severityText, { color: getSeverityCfg(selected.severity).color, fontSize: 14 }]}>
+                  {getSeverityCfg(selected.severity).label}
                 </Text>
               </View>
               <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#0f172a' }}>{selected.patientName}</Text>
               <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 20 }}>
                 <Text style={{ fontSize: 12, fontWeight: '700', color: '#94a3b8', marginBottom: 8, textTransform: 'uppercase' }}>AI Summary</Text>
                 <Text style={{ fontSize: 16, lineHeight: 26, color: '#334155' }}>{selected.summary}</Text>
+                {selected.hospitalName && (
+                  <Text style={{ fontSize: 13, color: Colors.light.secondary, fontWeight: '600', marginTop: 12 }}>
+                    📍 Assigned: {selected.hospitalName}
+                  </Text>
+                )}
               </View>
+
+              {selected.aiChatHistory && selected.aiChatHistory.length > 0 && (
+                <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 20 }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#94a3b8', marginBottom: 16, textTransform: 'uppercase' }}>AI Chat Transcript</Text>
+                  {selected.aiChatHistory.map((msg: any, idx: number) => (
+                    <View key={idx} style={[
+                      styles.msgBubble, 
+                      msg.role === 'user' ? styles.userBubble : styles.aiBubble
+                    ]}>
+                      <Text style={[
+                        styles.msgText,
+                        msg.role === 'user' ? styles.userText : styles.aiText
+                      ]}>{msg.content}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+              {selected.appointmentId && (
+                <TouchableOpacity
+                  style={{ backgroundColor: '#3b82f6', borderRadius: 16, padding: 18, alignItems: 'center' }}
+                  onPress={() => handleAcceptAppointment(selected)}
+                >
+                  <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>Accept Appointment & Join Chat</Text>
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
                 style={{ backgroundColor: Colors.light.secondary, borderRadius: 16, padding: 18, alignItems: 'center' }}
                 onPress={() => acknowledge(selected)}
@@ -179,4 +239,10 @@ const styles = StyleSheet.create({
   viewText: { fontSize: 13, color: '#94a3b8' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
   modalTitle: { fontSize: 18, fontWeight: 'bold', color: '#0f172a' },
+  msgBubble: { padding: 10, borderRadius: 12, marginBottom: 8, maxWidth: '90%' },
+  userBubble: { backgroundColor: Colors.light.primary + '15', alignSelf: 'flex-end', borderBottomRightRadius: 2 },
+  aiBubble: { backgroundColor: '#f1f5f9', alignSelf: 'flex-start', borderBottomLeftRadius: 2 },
+  msgText: { fontSize: 14, lineHeight: 20 },
+  userText: { color: Colors.light.primary, fontWeight: '500' },
+  aiText: { color: '#475569' },
 });

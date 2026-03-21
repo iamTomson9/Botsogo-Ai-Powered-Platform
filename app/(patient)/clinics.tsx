@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TextInput, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FontAwesome5 } from '@expo/vector-icons';
+import * as Location from 'expo-location';
 import { Colors } from '../../constants/Colors';
 import { useClinicStore } from '../../store/useClinicStore';
+import { useAuth } from '../../hooks/useAuth';
 
 export default function ClinicFinder() {
-  const { filteredClinics, searchQuery, setSearchQuery, setClinics } = useClinicStore();
+  const { filteredClinics, searchQuery, setSearchQuery, setClinics, setUserLocation, userLocation } = useClinicStore();
+  const { user, updateProfile } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [locationLoading, setLocationLoading] = useState(false);
 
   useEffect(() => {
     // Load clinics data if empty
@@ -24,34 +28,82 @@ export default function ClinicFinder() {
       }
     };
     loadData();
-  }, [filteredClinics.length, setClinics]);
+    requestLocation();
+  }, []);
 
-  const renderClinicItem = ({ item }: { item: any }) => (
-    <View style={styles.clinicCard}>
-      <View style={styles.cardHeader}>
-        <Text style={styles.clinicName}>{item.name || item.managingOrganization?.display || 'Unnamed Clinic'}</Text>
-        <View style={[styles.statusBadge, { backgroundColor: item.operationalStatus?.display === 'Active' ? '#dcfce7' : '#fee2e2' }]}>
-          <Text style={[styles.statusText, { color: item.operationalStatus?.display === 'Active' ? '#166534' : '#991b1b' }]}>
-            {item.operationalStatus?.display || 'Unknown'}
-          </Text>
-        </View>
-      </View>
-      
-      <View style={styles.cardRow}>
-        <FontAwesome5 name="map-marker-alt" size={14} color="#64748b" style={styles.icon} />
-        <Text style={styles.addressText}>
-          {item.address?.city ? `${item.address.city}, ` : ''}{item.address?.district ? `${item.address.district}, ` : ''}{item.address?.country}
-        </Text>
-      </View>
+  const requestLocation = async () => {
+    setLocationLoading(true);
+    try {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Permission to access location was denied. Clinics will not be sorted by distance.');
+        return;
+      }
 
-      {item.contact?.telecom?.[0]?.value && (
-        <View style={styles.cardRow}>
-          <FontAwesome5 name="phone" size={14} color="#64748b" style={styles.icon} />
-          <Text style={styles.contactText}>{item.contact.telecom[0].value}</Text>
+      let location = await Location.getCurrentPositionAsync({});
+      const coords = {
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude
+      };
+      setUserLocation(coords);
+    } catch (error) {
+      console.error("Error getting location:", error);
+    } finally {
+      setLocationLoading(false);
+    }
+  };
+
+  // Automatically assign nearest clinic if user is a patient and hasn't been assigned one yet
+  useEffect(() => {
+      if (user?.role === 'patient' && !user.assignedClinicId && filteredClinics.length > 0 && userLocation) {
+          const nearestClinic = filteredClinics[0];
+          const clinicId = nearestClinic.identifier?.[0]?.value || nearestClinic.name;
+          if (clinicId) {
+              updateProfile({ assignedClinicId: clinicId });
+          }
+      }
+  }, [user, filteredClinics, userLocation]);
+
+  const renderClinicItem = ({ item }: { item: any }) => {
+    const isAssigned = user?.assignedClinicId === (item.identifier?.[0]?.value || item.name);
+    
+    return (
+        <View style={[styles.clinicCard, isAssigned && styles.assignedCard]}>
+          <View style={styles.cardHeader}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.clinicName}>{item.name || item.managingOrganization?.display || 'Unnamed Clinic'}</Text>
+              {isAssigned && (
+                  <View style={styles.assignedBadge}>
+                    <Text style={styles.assignedBadgeText}>Your Assigned Clinic</Text>
+                  </View>
+              )}
+            </View>
+            <View style={[styles.statusBadge, { backgroundColor: item.operationalStatus?.display === 'Active' ? '#dcfce7' : '#fee2e2' }]}>
+              <Text style={[styles.statusText, { color: item.operationalStatus?.display === 'Active' ? '#166534' : '#991b1b' }]}>
+                {item.operationalStatus?.display || 'Unknown'}
+              </Text>
+            </View>
+          </View>
+          
+          <View style={styles.cardRow}>
+            <FontAwesome5 name="map-marker-alt" size={14} color="#64748b" style={styles.icon} />
+            <Text style={styles.addressText}>
+                {item.address?.city ? `${item.address.city}, ` : ''}{item.address?.district ? `${item.address.district}, ` : ''}{item.address?.country}
+                {item.distance && item.distance !== Infinity && (
+                    <Text style={styles.distanceText}> • {item.distance.toFixed(1)} km away</Text>
+                )}
+            </Text>
+          </View>
+    
+          {item.contact?.telecom?.[0]?.value && (
+            <View style={styles.cardRow}>
+              <FontAwesome5 name="phone" size={14} color="#64748b" style={styles.icon} />
+              <Text style={styles.contactText}>{item.contact.telecom[0].value}</Text>
+            </View>
+          )}
         </View>
-      )}
-    </View>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -66,6 +118,7 @@ export default function ClinicFinder() {
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
+          {locationLoading && <ActivityIndicator size="small" color={Colors.light.primary} style={{ marginLeft: 8 }} />}
         </View>
       </View>
 
@@ -144,6 +197,26 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  assignedCard: {
+    borderColor: Colors.light.primary,
+    backgroundColor: '#f0fdfa',
+  },
+  assignedBadge: {
+    backgroundColor: Colors.light.primary,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+    alignSelf: 'flex-start',
+    marginTop: 4,
+  },
+  assignedBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -179,6 +252,10 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     color: '#475569',
+  },
+  distanceText: {
+    color: Colors.light.primary,
+    fontWeight: '600',
   },
   contactText: {
     fontSize: 14,
