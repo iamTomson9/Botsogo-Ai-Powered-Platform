@@ -23,38 +23,36 @@ Medical History: ${PATIENT_CONTEXT.medicalRecords}. Allergies: ${PATIENT_CONTEXT
 
 Your duties:
 1. Answer health-related questions accurately and empathetic.
-2. Analyze patient symptoms to determine severity (urgent vs routine).
-3. If the issue is severe/urgent, you MUST call the 'bookAppointment' tool to automatically book an appointment at the nearest hospital.
-4. If the issue is less/medium risk, ask the patient if they want to be redirected to a human representative, and if they say yes, call the 'escalateToHuman' tool.
-Be concise, helpful, and reassuring.`;
+2. Analyze patient symptoms through conversation (gather duration, onset, severity, associated symptoms).
+3. Once you have enough information (usually after 3-4 exchanges), you MUST call the 'analyseAndBook' tool to provide a full clinical triage report and book an appointment.
+4. Categorize severity as:
+   - 'low': Minor issues, routine care.
+   - 'moderate': Needs attention but not life-threatening.
+   - 'high': Severe symptoms requiring urgent care.
+   - 'critical': Life-threatening emergencies.
+   - 'clinical': Follow-ups, chronic management, or non-acute clinical needs.
+5. Provide specific recommended screenings (e.g., "MRA for migraine vs headache") and doctor actions.
+Be professional, medical-grade, and reassuring.`;
 
 const tools = [
   {
     type: "function",
     function: {
-      name: "bookAppointment",
-      description: "Automatically book an appointment at the nearest hospital for a patient with severe or urgent symptoms.",
+      name: "analyseAndBook",
+      description: "Analyze symptoms, categorize risk, and book an appointment with a structured triage report for the doctor.",
       parameters: {
         type: "object",
         properties: {
-          reason: { type: "string", description: "The medical reason for the urgent appointment" },
-          severityLevel: { type: "string", enum: ["high", "critical"] }
+          chiefComplaint: { type: "string", description: "The primary symptom reported" },
+          patientSummary: { type: "string", description: "1-2 sentence clinical summary of the patient's state" },
+          severity: { type: "string", enum: ["low", "moderate", "high", "critical", "clinical"] },
+          triageCategory: { type: "string", description: "Human-readable category (e.g. High Risk)" },
+          recommendedScreenings: { type: "array", items: { type: "string" }, description: "Specific medical tests or screenings recommended" },
+          recommendedActions: { type: "array", items: { type: "string" }, description: "Specific actions for the doctor to take" },
+          urgency: { type: "string", enum: ["routine", "within-24h", "immediate"] },
+          hospitalName: { type: "string", description: "Choose a suitable hospital name from context or leave generic" }
         },
-        required: ["reason", "severityLevel"]
-      }
-    }
-  },
-  {
-    type: "function",
-    function: {
-      name: "escalateToHuman",
-      description: "Connect the patient to a human representative for medium-risk or routine concerns when requested.",
-      parameters: {
-        type: "object",
-        properties: {
-          reason: { type: "string", description: "Reason for escalation" }
-        },
-        required: ["reason"]
+        required: ["chiefComplaint", "patientSummary", "severity", "triageCategory", "recommendedScreenings", "recommendedActions", "urgency"]
       }
     }
   }
@@ -99,34 +97,51 @@ export const handleToolCalls = async (toolCalls: any[]): Promise<Message[]> => {
     
     let result = "";
     
-    if (functionName === 'bookAppointment') {
-      console.log("TOOL CALL [bookAppointment]:", args);
+    if (functionName === 'analyseAndBook') {
+      console.log("TOOL CALL [analyseAndBook]:", args);
       
-      // Simulate mapping generic closest active hospital
-      let bookedHospitalName = "General Hospital";
+      let bookedHospitalName = args.hospitalName || "General Hospital";
       try {
         const clinicsData = require('../../clinics.json');
         const activeClinics = clinicsData.filter((c: any) => c.operationalStatus?.display === 'Active' && c.name);
-        if (activeClinics.length > 0) {
-          // Shuffle or pick random nearest for demo
+        if (activeClinics.length > 0 && !args.hospitalName) {
           const randomNearest = activeClinics[Math.floor(Math.random() * Math.min(20, activeClinics.length))];
           bookedHospitalName = randomNearest.name;
         }
       } catch (err) {
-        console.warn("Could not load clinics data for AI routing.");
+        console.warn("Could not load clinics data.");
+      }
+
+      // Hardcode a user ID for demo purposes
+      const userId = "demo-user-123"; 
+
+      try {
+        const { bookAppointment } = require('./appointmentService');
+        await bookAppointment(
+          userId,
+          PATIENT_CONTEXT.name,
+          bookedHospitalName, // as ID for demo
+          bookedHospitalName,
+          args.chiefComplaint,
+          {
+            severity: args.severity,
+            triageCategory: args.triageCategory,
+            patientSummary: args.patientSummary,
+            chiefComplaint: args.chiefComplaint,
+            recommendedScreenings: args.recommendedScreenings,
+            recommendedActions: args.recommendedActions,
+            urgency: args.urgency,
+          }
+        );
+      } catch (err) {
+        console.error("Booking error:", err);
       }
 
       result = JSON.stringify({
         status: "success",
         bookedHospital: bookedHospitalName,
-        appointmentTime: "Immediate / Walk-in Alert Sent to Doctor Queue",
-        message: `Tell the user their appointment is booked at ${bookedHospitalName} and a doctor queue has been alerted to prepare for their arrival.`
-      });
-    } else if (functionName === 'escalateToHuman') {
-      console.log("TOOL CALL [escalateToHuman]:", args);
-      result = JSON.stringify({
-        status: "success",
-        message: "Tell the user that a human representative will join the chat shortly."
+        triageReport: args,
+        message: `Appointment booked at ${bookedHospitalName}. A triage report has been sent to the clinical team.`
       });
     }
 

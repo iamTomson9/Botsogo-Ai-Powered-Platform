@@ -17,19 +17,21 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
     if (!user && !inAuthGroup && !inOnboarding) {
       // If user was in a protected group and is now null, redirect to login
-      const wasInApp = ['(admin)', '(doctor)', '(patient)', '(app)', '(tabs)'].includes(segments[0]);
+      const wasInApp = ['(admin)', '(doctor)', '(patient)', '(pharmacist)', '(app)', '(tabs)'].includes(segments[0]);
       if (wasInApp) {
         router.replace('/(auth)/login');
       } else {
         router.replace('/(onboarding)/splash');
       }
-    } else if (user && !['(admin)', '(doctor)', '(patient)', '(app)'].includes(segments[0])) {
+    } else if (user && !['(admin)', '(doctor)', '(patient)', '(pharmacist)', '(app)'].includes(segments[0])) {
       // Logged in → go to role-based dashboard
       const role: string = user.role || 'patient';
       if (role === 'admin') {
         router.replace('/(admin)');
       } else if (role === 'doctor') {
         router.replace('/(doctor)');
+      } else if (role === 'pharmacist') {
+        router.replace('/(pharmacist)');
       } else {
         router.replace('/(patient)');
       }
@@ -58,6 +60,7 @@ export default function RootLayout() {
           <Stack.Screen name="(admin)" />
           <Stack.Screen name="(doctor)" />
           <Stack.Screen name="(patient)" />
+          <Stack.Screen name="(pharmacist)" />
         </Stack>
       </AuthGuard>
       <StatusBar style="light" backgroundColor="#5BAFB8" />

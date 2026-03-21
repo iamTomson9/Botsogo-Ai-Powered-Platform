@@ -36,6 +36,15 @@ export interface Appointment {
   queuePosition: number;
   estimatedWaitMinutes: number;
   createdAt?: any;
+  triage?: {
+    severity: 'low' | 'moderate' | 'high' | 'critical' | 'clinical';
+    triageCategory: string;
+    patientSummary: string;
+    chiefComplaint: string;
+    recommendedScreenings: string[];
+    recommendedActions: string[];
+    urgency: 'routine' | 'within-24h' | 'immediate';
+  };
 }
 
 /** Average minutes per consultation – used to estimate queue wait time */
@@ -50,7 +59,8 @@ export const bookAppointment = async (
   patientName: string,
   hospitalId: string,
   hospitalName: string,
-  reason: string
+  reason: string,
+  triage?: Appointment['triage']
 ): Promise<Appointment> => {
 
   // How many people are already waiting at this hospital?
@@ -75,6 +85,7 @@ export const bookAppointment = async (
     queuePosition,
     estimatedWaitMinutes,
     createdAt: serverTimestamp(),
+    triage,
   };
 
   const docRef = await addDoc(collection(db, 'appointments'), appointment);

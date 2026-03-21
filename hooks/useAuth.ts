@@ -4,7 +4,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase/config';
 
 export interface AppUser extends User {
-  role?: 'patient' | 'doctor' | 'admin';
+  role?: 'patient' | 'doctor' | 'admin' | 'pharmacist';
   name?: string;
 }
 

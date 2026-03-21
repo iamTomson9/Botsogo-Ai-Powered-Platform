@@ -12,7 +12,7 @@ export default function RegisterScreen() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<'patient' | 'doctor'>('patient');
+  const [role, setRole] = useState<'patient' | 'doctor' | 'pharmacist'>('patient');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
@@ -72,6 +72,13 @@ export default function RegisterScreen() {
               >
                 <FontAwesome5 name="user-md" size={16} color={role === 'doctor' ? '#fff' : '#64748b'} />
                 <Text style={[styles.roleText, role === 'doctor' && styles.roleTextActive]}>Doctor</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.roleBtn, role === 'pharmacist' && styles.roleBtnActive]}
+                onPress={() => setRole('pharmacist')}
+              >
+                <FontAwesome5 name="pills" size={16} color={role === 'pharmacist' ? '#fff' : '#64748b'} />
+                <Text style={[styles.roleText, role === 'pharmacist' && styles.roleTextActive]}>Pharmacist</Text>
               </TouchableOpacity>
             </View>
 

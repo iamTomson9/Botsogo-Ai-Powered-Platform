@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, TextInput } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, TextInput, Modal, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
@@ -12,6 +12,15 @@ export default function PatientQueue() {
   const [hospitalId, setHospitalId] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+
+  const SEVERITY_COLORS: Record<string, string> = {
+    low: '#10b981',
+    moderate: '#f59e0b',
+    high: '#ef4444',
+    critical: '#b91c1c',
+    clinical: '#6d28d9',
+  };
 
   useEffect(() => {
     if (!hospitalId) return;
@@ -26,10 +35,16 @@ export default function PatientQueue() {
   const renderPatient = ({ item }: { item: Appointment }) => {
     const isUrgent = item.reason.toLowerCase().includes('chest') ||
       item.reason.toLowerCase().includes('breath') ||
-      item.reason.toLowerCase().includes('pain');
+      item.reason.toLowerCase().includes('pain') ||
+      item.triage?.severity === 'critical' || item.triage?.severity === 'high';
+
+    const triageColor = item.triage ? (SEVERITY_COLORS[item.triage.severity] || Colors.light.primary) : null;
 
     return (
-      <View style={[styles.card, isUrgent && styles.cardHighPriority]}>
+      <TouchableOpacity 
+        style={[styles.card, isUrgent && styles.cardHighPriority]}
+        onPress={() => item.triage && setSelectedAppointment(item)}
+      >
         <View style={styles.cardHeader}>
           <View style={styles.positionBadge}>
             <Text style={styles.positionText}>#{item.queuePosition}</Text>
@@ -53,6 +68,15 @@ export default function PatientQueue() {
             </Text>
           </View>
         </View>
+
+        {item.triage && (
+          <View style={[styles.triageBadge, { backgroundColor: (triageColor || Colors.light.primary) + '20' }]}>
+             <FontAwesome5 name="robot" size={10} color={triageColor || Colors.light.primary} />
+             <Text style={[styles.triageBadgeText, { color: triageColor || Colors.light.primary }]}>
+               AI TRIAGE: {item.triage.triageCategory.toUpperCase()}
+             </Text>
+          </View>
+        )}
 
         <View style={styles.waitInfo}>
           <FontAwesome5 name="clock" size={12} color="#94a3b8" />
@@ -79,7 +103,7 @@ export default function PatientQueue() {
             </TouchableOpacity>
           )}
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -131,6 +155,64 @@ export default function PatientQueue() {
           }
         />
       )}
+
+      {/* Doctor Brief Modal */}
+      <Modal visible={!!selectedAppointment} animationType="slide" presentationStyle="pageSheet">
+        {selectedAppointment?.triage && (
+          <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={() => setSelectedAppointment(null)}>
+                <FontAwesome5 name="times" size={22} color="#334155" />
+              </TouchableOpacity>
+              <View style={{ flex: 1, marginLeft: 16 }}>
+                <Text style={styles.modalTitle}>Clinical Brief</Text>
+                <Text style={{ color: SEVERITY_COLORS[selectedAppointment.triage.severity], fontWeight: 'bold' }}>
+                  {selectedAppointment.triage.triageCategory}
+                </Text>
+              </View>
+            </View>
+
+            <ScrollView contentContainerStyle={{ padding: 24, gap: 20 }}>
+              <View style={styles.briefSection}>
+                <Text style={styles.briefLabel}>Patient Summary</Text>
+                <Text style={styles.briefValue}>{selectedAppointment.triage.patientSummary}</Text>
+              </View>
+
+              <View style={styles.briefSection}>
+                <Text style={styles.briefLabel}>Chief Complaint</Text>
+                <Text style={styles.briefValue}>{selectedAppointment.triage.chiefComplaint}</Text>
+              </View>
+
+              <View style={styles.briefSection}>
+                <Text style={styles.briefLabel}>Recommended Screenings</Text>
+                <View style={styles.briefChipRow}>
+                  {selectedAppointment.triage.recommendedScreenings.map((s, i) => (
+                    <View key={i} style={styles.briefChip}>
+                      <Text style={styles.briefChipText}>{s}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.briefSection}>
+                <Text style={styles.briefLabel}>Doctor Recommended Actions</Text>
+                {selectedAppointment.triage.recommendedActions.map((a, i) => (
+                  <View key={i} style={styles.briefActionRow}>
+                    <FontAwesome5 name="check-circle" size={14} color={SEVERITY_COLORS[selectedAppointment.triage!.severity]} />
+                    <Text style={styles.briefValue}>{a}</Text>
+                  </View>
+                ))}
+              </View>
+
+              <View style={[styles.urgencyBanner, { backgroundColor: SEVERITY_COLORS[selectedAppointment.triage.severity] + '10' }]}>
+                <Text style={[styles.urgencyBannerText, { color: SEVERITY_COLORS[selectedAppointment.triage.severity] }]}>
+                  STATUS: {selectedAppointment.triage.urgency.toUpperCase()}
+                </Text>
+              </View>
+            </ScrollView>
+          </SafeAreaView>
+        )}
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -271,5 +353,87 @@ const styles = StyleSheet.create({
   connectBtn: {
     backgroundColor: Colors.light.secondary, borderRadius: 16,
     paddingVertical: 16, paddingHorizontal: 32, marginTop: 12,
+  },
+  triageBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+  },
+  triageBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+    backgroundColor: '#fff',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#0f172a',
+  },
+  briefSection: {
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.02,
+    shadowRadius: 5,
+    elevation: 1,
+  },
+  briefLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#94a3b8',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 8,
+  },
+  briefValue: {
+    fontSize: 15,
+    color: '#334155',
+    lineHeight: 22,
+    flex: 1,
+  },
+  briefChipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  briefChip: {
+    backgroundColor: '#f1f5f9',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  briefChipText: {
+    fontSize: 12,
+    color: '#334155',
+    fontWeight: '600',
+  },
+  briefActionRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    marginBottom: 8,
+  },
+  urgencyBanner: {
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  urgencyBannerText: {
+    fontWeight: 'bold',
+    fontSize: 14,
   },
 });
