@@ -166,7 +166,7 @@ Provide your response in the following structured format:
 3. **Severity Assessment**: Categorize as Routine, Urgent, or Emergency.
 4. **Immediate Recommendation**: Clear, actionable next steps for the patient/doctor.
 
-KEEP IT CONCISE, CLINICAL, AND ACTION-ORIENTED.`;
+KEEP IT CONCISE, CLINICAL, AND ACTION-ORIENTED. ALL OUTPUTS MUST BE PLAIN TEXT WITH NO EMOJIS.`;
       const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
       
       const payload = {
@@ -192,7 +192,7 @@ KEEP IT CONCISE, CLINICAL, AND ACTION-ORIENTED.`;
       const analysis = data.choices?.[0]?.message?.content || "AI could not process the image.";
 
       await addDoc(collection(db, 'chats', chatId!, 'messages'), {
-        text: `🔍 AI DIAGNOSIS ASSISTANCE\n\n${analysis}`,
+        text: `[ AI DIAGNOSIS ASSITANCE ]\n\n${analysis}`,
         senderId: 'system_ai',
         createdAt: serverTimestamp()
       });
@@ -253,7 +253,7 @@ KEEP IT CONCISE, CLINICAL, AND ACTION-ORIENTED.`;
       );
       
       const itemSummaries = results.map(r => `• ${r.name}: ${r.quantity}${r.unit} - ${r.instructions}`).join('\n');
-      const automatedMsg = `💊 PRESCRIPTION ISSUED\n\nDiagnosis: ${diagnosis}\n\nMedications:\n${itemSummaries}\n\nPlease visit the pharmacy for dispensing.`;
+      const automatedMsg = `[ PRESCRIPTION ISSUED ]\n\nDiagnosis: ${diagnosis}\n\nMedications:\n${itemSummaries}\n\nPlease visit the pharmacy for dispensing.`;
 
       await addDoc(collection(db, 'chats', chatId!, 'messages'), {
         text: automatedMsg,
@@ -314,7 +314,7 @@ Create a structured feedback for the patient including:
 3. **Prescriptions/Next Steps**: What the patient needs to do now.
 4. **Follow-up**: When is the next checkup?
 
-KEEP IT PATIENT-FRIENDLY BUT CLINICALLY ACCURATE.
+KEEP IT PATIENT-FRIENDLY BUT CLINICALLY ACCURATE. DO NOT USE EMOJIS.
 ${chatHistory}
 ${clinicalTranscript}`;
 
@@ -331,7 +331,7 @@ ${clinicalTranscript}`;
       const aiSummary = data.choices?.[0]?.message?.content || "AI could not generate a summary.";
 
       await addDoc(collection(db, 'chats', chatId, 'messages'), {
-        text: `📝 CONSULTATION FEEDBACK SUMMARY\n\n${aiSummary}`,
+        text: `[ CONSULTATION FEEDBACK SUMMARY ]\n\n${aiSummary}`,
         senderId: 'system_ai',
         createdAt: serverTimestamp()
       });
@@ -459,22 +459,21 @@ ${clinicalTranscript}`;
             <>
               <TouchableOpacity 
                 onPress={() => setIsTranscribing(!isTranscribing)} 
-                style={[styles.iconBtn, { marginRight: 8, backgroundColor: isTranscribing ? '#ef4444' : 'transparent', borderRadius: 20 }]}
+                style={[styles.iconBtn, { backgroundColor: isTranscribing ? '#ef4444' : 'transparent', borderRadius: 20 }]}
               >
-                <FontAwesome5 name="microphone" size={18} color="#fff" />
+                <FontAwesome5 name="microphone" size={16} color="#fff" />
               </TouchableOpacity>
-              <TouchableOpacity onPress={loadPatientHistory} style={[styles.iconBtn, { marginRight: 8 }]}>
-                <FontAwesome5 name="file-medical" size={18} color="#fff" />
+              <TouchableOpacity onPress={loadPatientHistory} style={styles.iconBtn}>
+                <FontAwesome5 name="file-medical" size={16} color="#fff" />
               </TouchableOpacity>
               <TouchableOpacity 
                 onPress={() => { setShowPrescriptionModal(true); setPrescriptionStep(0); loadMedications(); }} 
-                style={styles.prescribeBtn}
+                style={styles.iconBtn}
               >
                 <FontAwesome5 name="pills" size={16} color="#fff" />
-                <Text style={styles.prescribeBtnText}>Prescribe</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={handleEndConsultation} style={[styles.iconBtn, { marginRight: 8 }]}>
-                <FontAwesome5 name="check-double" size={18} color="#fff" />
+              <TouchableOpacity onPress={handleEndConsultation} style={styles.iconBtn}>
+                <FontAwesome5 name="check-double" size={16} color="#fff" />
               </TouchableOpacity>
             </>
           )}
@@ -482,17 +481,17 @@ ${clinicalTranscript}`;
           {isPharmacist && (
             <TouchableOpacity 
               onPress={() => setShowChecklist(true)} 
-              style={[styles.prescribeBtn, { backgroundColor: '#059669' }]}
+              style={[styles.prescribeBtn, { backgroundColor: '#059669', marginRight: 4 }]}
             >
-              <FontAwesome5 name="hand-holding-medical" size={16} color="#fff" />
+              <FontAwesome5 name="hand-holding-medical" size={14} color="#fff" />
               <Text style={styles.prescribeBtnText}>Dispense</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity onPress={() => startCall(false)} style={styles.iconBtn}>
-            <FontAwesome5 name="phone-alt" size={18} color="#fff" />
+            <FontAwesome5 name="phone-alt" size={16} color="#fff" />
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => startCall(true)} style={[styles.iconBtn, { marginLeft: 16 }]}>
-            <FontAwesome5 name="video" size={18} color="#fff" />
+          <TouchableOpacity onPress={() => startCall(true)} style={styles.iconBtn}>
+            <FontAwesome5 name="video" size={16} color="#fff" />
           </TouchableOpacity>
         </View>
       </View>
@@ -831,8 +830,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1, shadowRadius: 12, elevation: 4, zIndex: 10,
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center' },
-  headerRight: { flexDirection: 'row', alignItems: 'center' },
-  iconBtn: { padding: 8 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  iconBtn: { padding: 6 },
   prescribeBtn: { 
     flexDirection: 'row', alignItems: 'center', 
     backgroundColor: 'rgba(255,255,255,0.2)', 

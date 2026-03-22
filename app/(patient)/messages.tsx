@@ -83,7 +83,7 @@ export default function PatientMessages() {
 
       <View style={styles.cardBody}>
         <View style={styles.headerRow}>
-          <Text style={styles.name}>{item.name}</Text>
+          <Text style={[styles.name, { flexShrink: 1 }]} numberOfLines={1}>{item.name}</Text>
           <Text style={styles.time}>
             {item.updatedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </Text>

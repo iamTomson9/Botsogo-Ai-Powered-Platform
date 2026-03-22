@@ -60,7 +60,7 @@ export default function BookAppointment() {
         finalReason
       );
       Alert.alert(
-        '✅ Appointment Booked!',
+        'Appointment Confirmed',
         `You have been added to the queue at ${selectedClinic.name}.\n\nGo to "My Queue" to track your position.`,
         [{ text: 'View My Queue', onPress: () => router.replace('/(patient)/my-queue') }]
       );

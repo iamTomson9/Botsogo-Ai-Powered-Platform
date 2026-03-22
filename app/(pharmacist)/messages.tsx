@@ -58,9 +58,12 @@ export default function PharmacistMessages() {
         <View style={styles.headerRow}>
           <Text style={styles.name}>{item.name}</Text>
         </View>
-        <Text style={styles.roleLabel}>
-          {item.role === 'doctor' ? '👨‍⚕️ Doctor' : '🧑 Patient'}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+          <FontAwesome5 name={item.role === 'doctor' ? 'user-md' : 'user'} size={12} color="#64748b" style={{ marginRight: 6 }} />
+          <Text style={{ fontSize: 13, color: '#64748b' }}>
+            {item.role === 'doctor' ? 'Doctor' : 'Patient'}
+          </Text>
+        </View>
         <Text style={styles.preview} numberOfLines={1}>{item.lastMessage}</Text>
       </View>
       <FontAwesome5 name="chevron-right" size={14} color="#cbd5e1" />

@@ -2,22 +2,55 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, Linking, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FontAwesome5, Ionicons } from '@expo/vector-icons';
+import * as Location from 'expo-location';
 import { Colors } from '../../constants/Colors';
 import clinicsData from '../../clinics.json';
+
+const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+  const R = 6371; // Radius of the earth in km
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * Math.sin(dLon / 2) * Math.sin(dLon / 2); 
+  return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+};
 
 export default function ClinicsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [clinics, setClinics] = useState<any[]>([]);
   const [filteredClinics, setFilteredClinics] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userLocation, setUserLocation] = useState<{latitude: number, longitude: number} | null>(null);
 
   useEffect(() => {
+    (async () => {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') return;
+      try {
+        let loc = await Location.getCurrentPositionAsync({});
+        setUserLocation({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
+      } catch (e) {
+        console.log("Could not get location", e);
+      }
+    })();
+  }, []);
 
-    const activeClinics = (clinicsData as any[]).filter(c => c.operationalStatus?.display === 'Active').slice(0, 100);
+  useEffect(() => {
+    let activeClinics = (clinicsData as any[]).filter(c => c.operationalStatus?.display === 'Active').slice(0, 100);
+    
+    if (userLocation) {
+      activeClinics = activeClinics.map(clinic => {
+        if (clinic.position?.latitude && clinic.position?.longitude) {
+          const dist = getDistance(userLocation.latitude, userLocation.longitude, clinic.position.latitude, clinic.position.longitude);
+          return { ...clinic, distance: dist };
+        }
+        return { ...clinic, distance: Infinity };
+      }).sort((a, b) => a.distance - b.distance);
+    }
+
     setClinics(activeClinics);
     setFilteredClinics(activeClinics);
     setLoading(false);
-  }, []);
+  }, [userLocation]);
 
   useEffect(() => {
     const query = searchQuery.toLowerCase();
@@ -54,6 +87,7 @@ export default function ClinicsScreen() {
           <Text style={styles.clinicName}>{item.name}</Text>
           <Text style={styles.clinicAddress}>
             {item.address?.city || item.address?.district || 'Botswana'}
+            {item.distance && item.distance !== Infinity ? ` • ${item.distance.toFixed(1)} km away` : ''}
           </Text>
         </View>
         <TouchableOpacity 

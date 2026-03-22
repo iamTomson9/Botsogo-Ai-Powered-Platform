@@ -30,7 +30,7 @@ Your duties:
    - 'critical': Life-threatening emergencies.
    - 'clinical': Follow-ups, chronic management, or non-acute clinical needs.
 5. Provide specific recommended screenings (e.g., "MRA for migraine vs headache") and doctor actions.
-Be professional, medical-grade, and reassuring.`;
+Be professional, medical-grade, and reassuring. Absolutely DO NOT use emojis in any of your responses.`;
 };
 
 const tools = [

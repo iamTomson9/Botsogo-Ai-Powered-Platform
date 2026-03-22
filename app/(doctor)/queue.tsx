@@ -58,8 +58,8 @@ export default function PatientQueue() {
           <View style={styles.positionBadge}>
             <Text style={styles.positionText}>#{item.queuePosition}</Text>
           </View>
-          <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={styles.patientName}>{item.patientName}</Text>
+          <View style={{ flex: 1, marginLeft: 12, marginRight: 8 }}>
+            <Text style={[styles.patientName, { flexShrink: 1 }]} numberOfLines={1}>{item.patientName}</Text>
             <View style={styles.conditionRow}>
               <Ionicons
                 name={isUrgent ? 'alert-circle' : 'medical'}
