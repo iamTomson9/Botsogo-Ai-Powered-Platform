@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform, Modal, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform, Modal, ActivityIndicator, ScrollView, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
@@ -12,8 +12,9 @@ type Message = {
   id: string; text: string; sender: 'me' | 'other'; time: string;
 };
 
-import { getActiveAppointmentSession } from '../../services/appointmentService';
+import { getActiveAppointmentSession, resolveConsultation, getPatientMedicalRecords } from '../../services/appointmentService';
 import { getMedicationsList, prescribeMedications } from '../../services/inventoryService';
+import { getPatientInsights, generatePatientInsights } from '../../services/patientService';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ChatInterface({ isDoctorView }: { isDoctorView: boolean }) {
@@ -25,7 +26,14 @@ export default function ChatInterface({ isDoctorView }: { isDoctorView: boolean 
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [sessionActive, setSessionActive] = useState(true);
+  const [activeAppointmentId, setActiveAppointmentId] = useState<string | null>(null);
   
+  // History states
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [pastRecords, setPastRecords] = useState<any[]>([]);
+  const [aiInsights, setAiInsights] = useState<string | null>(null);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
   // Call simulation states
   const [isCalling, setIsCalling] = useState(false);
   const [isVideo, setIsVideo] = useState(false);
@@ -51,6 +59,7 @@ export default function ChatInterface({ isDoctorView }: { isDoctorView: boolean 
       const doctorId = isDoctorView ? user.uid : (id as string);
       const session = await getActiveAppointmentSession(patientId, doctorId);
       setSessionActive(!!session);
+      if (session) setActiveAppointmentId(session.id!);
     };
     checkSession();
   }, [id, user]);
@@ -165,6 +174,55 @@ export default function ChatInterface({ isDoctorView }: { isDoctorView: boolean 
     }
   };
 
+  const handleEndConsultation = async () => {
+    if (!activeAppointmentId) return;
+    Alert.alert(
+      "End Consultation",
+      "Are you sure you want to resolve this consultation and close the chat?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "End", style: "destructive", onPress: async () => {
+          try {
+            await resolveConsultation(activeAppointmentId);
+            router.back();
+          } catch (e) {
+            console.error(e);
+          }
+        }}
+      ]
+    );
+  };
+
+  const loadPatientHistory = async () => {
+    if (!id) return;
+    setLoadingHistory(true);
+    setShowHistoryModal(true);
+    try {
+      const records = await getPatientMedicalRecords(id as string);
+      setPastRecords(records);
+      const insightDoc = await getPatientInsights(id as string);
+      setAiInsights(insightDoc?.summary || "No insights generated yet.");
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  const generateNewInsights = async () => {
+    if (!id) return;
+    setLoadingHistory(true);
+    try {
+      const newSummary = await generatePatientInsights(id as string);
+      setAiInsights(newSummary);
+      alert("AI Clinical Profile refreshed!");
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
   const toggleMedSelection = (medId: string) => {
     setSelectedMeds(prev => 
       prev.includes(medId) ? prev.filter(i => i !== medId) : [...prev, medId]
@@ -206,13 +264,21 @@ export default function ChatInterface({ isDoctorView }: { isDoctorView: boolean 
         </View>
         <View style={styles.headerRight}>
           {isDoctorView && (
-            <TouchableOpacity 
-              onPress={() => { setShowPrescriptionModal(true); setPrescriptionStep(0); loadMedications(); }} 
-              style={styles.prescribeBtn}
-            >
-              <FontAwesome5 name="pills" size={16} color="#fff" />
-              <Text style={styles.prescribeBtnText}>Prescribe</Text>
-            </TouchableOpacity>
+            <>
+              <TouchableOpacity onPress={loadPatientHistory} style={[styles.iconBtn, { marginRight: 8 }]}>
+                <FontAwesome5 name="file-medical" size={18} color="#fff" />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={() => { setShowPrescriptionModal(true); setPrescriptionStep(0); loadMedications(); }} 
+                style={styles.prescribeBtn}
+              >
+                <FontAwesome5 name="pills" size={16} color="#fff" />
+                <Text style={styles.prescribeBtnText}>Prescribe</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleEndConsultation} style={[styles.iconBtn, { marginRight: 8 }]}>
+                <FontAwesome5 name="check-double" size={18} color="#fff" />
+              </TouchableOpacity>
+            </>
           )}
           <TouchableOpacity onPress={() => startCall(false)} style={styles.iconBtn}>
             <FontAwesome5 name="phone-alt" size={18} color="#fff" />
@@ -406,26 +472,57 @@ export default function ChatInterface({ isDoctorView }: { isDoctorView: boolean 
         </SafeAreaView>
       </Modal>
 
-      {/* Live WebRTC Call Modal Overlay (Existing) */}
-      <Modal visible={isCalling} animationType="slide" transparent={false}>
-        <View style={styles.callContainer}>
-          {isCalling && chatId && (
-            <WebView
-              source={{ uri: `https://meet.jit.si/BotsogoHealth_${chatId}#config.startWithVideoMuted=${!isVideo}&config.startWithAudioMuted=false` }}
-              style={{ flex: 1, width: '100%', backgroundColor: '#0f172a' }}
-              allowsInlineMediaPlayback={true}
-              mediaPlaybackRequiresUserAction={false}
-              javaScriptEnabled={true}
-              domStorageEnabled={true}
-              originWhitelist={['*']}
-            />
-          )}
+      {/* Patient History Modal */}
+      <Modal visible={showHistoryModal} animationType="slide">
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
+          <View style={[styles.modalHeader, { backgroundColor: themeColor }]}>
+            <TouchableOpacity onPress={() => setShowHistoryModal(false)}>
+              <FontAwesome5 name="times" size={22} color="#fff" />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Patient History & AI Insights</Text>
+            <View style={{ width: 22 }} />
+          </View>
 
-          {/* Floating End Call Button to manually close the modal */}
-          <TouchableOpacity style={[styles.controlBtn, styles.endCallBtn, styles.floatingEndCall]} onPress={endCall}>
-            <FontAwesome5 name="phone-slash" size={24} color="#fff" />
-          </TouchableOpacity>
-        </View>
+          <ScrollView contentContainerStyle={{ padding: 20 }}>
+            <View style={styles.insightBox}>
+              <View style={styles.insightHeader}>
+                <FontAwesome5 name="robot" size={18} color={themeColor} />
+                <Text style={[styles.insightTitle, { color: themeColor }]}>AI Clinical Profile</Text>
+                <TouchableOpacity onPress={generateNewInsights} style={styles.refreshBtn}>
+                  <FontAwesome5 name="sync-alt" size={14} color="#64748b" />
+                </TouchableOpacity>
+              </View>
+              {loadingHistory ? (
+                <ActivityIndicator color={themeColor} />
+              ) : (
+                <Text style={styles.insightText}>{aiInsights}</Text>
+              )}
+            </View>
+
+            <Text style={styles.sectionTitle}>Medical Records History</Text>
+            {loadingHistory ? (
+              <ActivityIndicator color={themeColor} />
+            ) : pastRecords.length === 0 ? (
+              <Text style={styles.emptyText}>No past records found.</Text>
+            ) : (
+              pastRecords.map((r, i) => (
+                <View key={i} style={styles.recordMiniCard}>
+                  <View style={styles.recordHeader}>
+                    <Text style={styles.recordTag}>{r.type.toUpperCase()}</Text>
+                    <Text style={styles.recordDate}>{r.createdAt?.toDate().toLocaleDateString()}</Text>
+                  </View>
+                  <Text style={styles.recordDiagnosis}>{r.diagnosis}</Text>
+                  {r.type === 'prescription' && r.details?.medications && (
+                    <Text style={styles.recordMedSummary}>
+                      Prescribed: {r.details.medications.map((m: any) => typeof m === 'object' ? m.name : m).join(', ')}
+                    </Text>
+                  )}
+                </View>
+              ))
+            )}
+            <View style={{ height: 40 }} />
+          </ScrollView>
+        </SafeAreaView>
       </Modal>
 
     </View>
@@ -475,7 +572,7 @@ const styles = StyleSheet.create({
   
   // New Styles
   modalHeader: { padding: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#fff' },
+  modalTitle: { fontSize: 18, fontWeight: 'bold', color: '#fff', flex: 1, textAlign: 'center' },
   searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', margin: 20, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5, elevation: 2 },
   searchInput: { flex: 1, marginLeft: 10, fontSize: 16 },
   medCard: { backgroundColor: '#fff', padding: 16, borderRadius: 12, marginBottom: 12, flexDirection: 'row', alignItems: 'center', borderColor: '#e2e8f0', borderWidth: 1 },
@@ -488,11 +585,25 @@ const styles = StyleSheet.create({
   closedText: { textAlign: 'center', color: '#64748b', marginTop: 16, fontSize: 15, lineHeight: 22 },
   
   // Detailed Prescription Styles
-  sectionTitle: { fontSize: 14, fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 },
+  sectionTitle: { fontSize: 14, fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 16, marginTop: 24 },
   diagnosisInput: { backgroundColor: '#fff', padding: 16, borderRadius: 12, fontSize: 16, color: '#0f172a', borderColor: '#e2e8f0', borderWidth: 1, minHeight: 80, textAlignVertical: 'top' },
   detailCard: { backgroundColor: '#fff', padding: 16, borderRadius: 16, marginBottom: 16, borderColor: '#e2e8f0', borderWidth: 1 },
   detailMedName: { fontSize: 16, fontWeight: 'bold', color: '#0f172a', marginBottom: 12 },
   detailRow: { flexDirection: 'row', gap: 12 },
   detailLabel: { fontSize: 12, fontWeight: '600', color: '#94a3b8', marginBottom: 6 },
   detailInput: { backgroundColor: '#f8fafc', padding: 12, borderRadius: 8, fontSize: 15, color: '#0f172a', borderColor: '#e2e8f0', borderWidth: 1 },
+
+  // Insight Styles
+  insightBox: { backgroundColor: '#fff', padding: 18, borderRadius: 20, borderColor: '#e2e8f0', borderWidth: 1 },
+  insightHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
+  insightTitle: { fontSize: 16, fontWeight: 'bold' },
+  refreshBtn: { marginLeft: 'auto', padding: 6 },
+  insightText: { fontSize: 15, color: '#475569', lineHeight: 22 },
+  recordMiniCard: { backgroundColor: '#fff', padding: 14, borderRadius: 16, marginBottom: 12, borderColor: '#e2e8f0', borderWidth: 1 },
+  recordHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
+  recordTag: { fontSize: 10, fontWeight: '900', color: Colors.light.primary },
+  recordDate: { fontSize: 11, color: '#94a3b8' },
+  recordDiagnosis: { fontSize: 15, fontWeight: '700', color: '#1e293b' },
+  recordMedSummary: { fontSize: 12, color: '#64748b', marginTop: 4 },
+  emptyText: { textAlign: 'center', color: '#94a3b8', marginTop: 10 },
 });

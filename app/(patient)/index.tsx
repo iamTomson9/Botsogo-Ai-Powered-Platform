@@ -58,7 +58,7 @@ export default function PatientDashboard() {
             title="Health Records" 
             icon="file-medical"
             description="Access your medical history and documents."
-            onPress={() => {}} 
+            onPress={() => router.push('/(patient)/records' as any)} 
           />
         </View>
       </ScrollView>

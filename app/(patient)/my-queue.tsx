@@ -10,7 +10,7 @@ import { subscribeToPatientQueue, Appointment } from '../../services/appointment
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
   waiting:     { label: 'Waiting',     color: '#f59e0b', icon: 'clock' },
   'in-progress': { label: 'In Progress', color: '#10b981', icon: 'stethoscope' },
-  done:        { label: 'Done',        color: '#6366f1', icon: 'check-circle' },
+  done:        { label: 'Consulted',    color: '#6366f1', icon: 'check-circle' },
   cancelled:   { label: 'Cancelled',   color: '#ef4444', icon: 'times-circle' },
 };
 

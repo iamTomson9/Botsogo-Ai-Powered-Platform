@@ -2,7 +2,10 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../hooks/useAuth';
-import { User, Mail, Shield, LogOut, Edit2, Calendar, Users, Save, X } from 'lucide-react-native';
+import { User, Mail, Shield, LogOut, Edit2, Calendar, Users, Save, X, Brain } from 'lucide-react-native';
+import { FontAwesome5 } from '@expo/vector-icons';
+import { ScrollView } from 'react-native';
+import { getPatientInsights, generatePatientInsights } from '../../services/patientService';
 
 export default function PatientProfileScreen() {
   const { user, logout, updateProfile } = useAuth();
@@ -14,6 +17,29 @@ export default function PatientProfileScreen() {
     dob: user?.dob || '',
     gender: user?.gender || '',
   });
+
+  const [aiInsights, setAiInsights] = useState<string | null>(null);
+  const [loadingInsights, setLoadingInsights] = useState(false);
+
+  React.useEffect(() => {
+    if (!user?.uid) return;
+    const fetchInsights = async () => {
+      setLoadingInsights(true);
+      const data = await getPatientInsights(user.uid);
+      setAiInsights(data?.summary || null);
+      setLoadingInsights(false);
+    };
+    fetchInsights();
+  }, [user]);
+
+  const handleGenerateInsights = async () => {
+    if (!user?.uid) return;
+    setLoadingInsights(true);
+    const summary = await generatePatientInsights(user.uid);
+    setAiInsights(summary);
+    setLoadingInsights(false);
+    Alert.alert("Success", "Daily health analysis updated!");
+  };
 
   const handleSave = async () => {
     if (!formData.name.trim()) {
@@ -62,7 +88,7 @@ export default function PatientProfileScreen() {
         )}
       </View>
 
-      <View style={styles.content}>
+      <ScrollView style={styles.content}>
         <View style={styles.card}>
           <View style={styles.infoRow}>
             <User size={20} color="#5BAFB8" />
@@ -137,13 +163,52 @@ export default function PatientProfileScreen() {
           </View>
         </View>
 
+        {/* Clinical Insights Card */}
+        <View style={styles.insightCard}>
+          <View style={styles.insightHeader}>
+             <View style={styles.insightTitleRow}>
+                <Brain size={20} color="#8B5CF6" />
+                <Text style={styles.insightTitle}>Clinical AI Insights</Text>
+             </View>
+             <TouchableOpacity 
+                style={styles.refreshBtn} 
+                onPress={handleGenerateInsights}
+                disabled={loadingInsights}
+              >
+                {loadingInsights ? (
+                  <ActivityIndicator size="small" color="#8B5CF6" />
+                ) : (
+                  <FontAwesome5 name="sync-alt" size={14} color="#8B5CF6" />
+                )}
+             </TouchableOpacity>
+          </View>
+          
+          <View style={styles.insightBody}>
+            {aiInsights ? (
+              <Text style={styles.insightText}>{aiInsights}</Text>
+            ) : (
+              <View style={styles.emptyInsights}>
+                <Text style={styles.emptyInsightsText}>
+                  {loadingInsights ? "Analyzing history..." : "Generate your first AI health analysis based on your medical records."}
+                </Text>
+                {!loadingInsights && (
+                   <TouchableOpacity style={styles.generateBtn} onPress={handleGenerateInsights}>
+                      <Text style={styles.generateBtnText}>Generate Analysis</Text>
+                   </TouchableOpacity>
+                )}
+              </View>
+            )}
+          </View>
+        </View>
+
         {!isEditing && (
           <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
             <LogOut size={20} color="#FF4B4B" />
             <Text style={styles.logoutText}>Sign Out from Device</Text>
           </TouchableOpacity>
         )}
-      </View>
+        <View style={{ height: 40 }} />
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -192,5 +257,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
     backgroundColor: '#FFF', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: '#FFE5E5' 
   },
-  logoutText: { color: '#FF4B4B', fontWeight: '600' }
+  logoutText: { color: '#FF4B4B', fontWeight: '600' },
+  insightCard: { backgroundColor: '#FFF', borderRadius: 20, padding: 20, marginBottom: 24, shadowColor: '#8B5CF6', shadowOpacity: 0.1, shadowRadius: 10, elevation: 2, borderWidth: 1, borderColor: '#DDD6FE' },
+  insightHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  insightTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  insightTitle: { fontSize: 18, fontWeight: 'bold', color: '#1E1B4B' },
+  refreshBtn: { padding: 8, backgroundColor: '#F5F3FF', borderRadius: 8 },
+  insightBody: { },
+  insightText: { fontSize: 15, color: '#4B5563', lineHeight: 22 },
+  emptyInsights: { alignItems: 'center', paddingVertical: 20 },
+  emptyInsightsText: { textAlign: 'center', color: '#6B7280', fontSize: 14, lineHeight: 20, marginBottom: 16 },
+  generateBtn: { backgroundColor: '#8B5CF6', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 12 },
+  generateBtnText: { color: '#FFF', fontWeight: 'bold' },
 });

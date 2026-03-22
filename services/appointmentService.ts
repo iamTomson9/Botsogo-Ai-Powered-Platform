@@ -113,8 +113,7 @@ export const subscribeToPatientQueue = (
   const q = query(
     collection(db, 'appointments'),
     where('patientId', '==', patientId),
-    where('status', 'in', ['waiting', 'in-progress']),
-    orderBy('createdAt', 'desc')
+    where('status', 'in', ['waiting', 'in-progress', 'done'])
   );
 
   return onSnapshot(q, (snapshot) => {
@@ -122,6 +121,14 @@ export const subscribeToPatientQueue = (
       id: d.id,
       ...d.data()
     } as Appointment));
+    
+    // Sort client-side to avoid index requirement
+    appointments.sort((a, b) => {
+      const timeA = a.createdAt?.seconds || 0;
+      const timeB = b.createdAt?.seconds || 0;
+      return timeB - timeA;
+    });
+    
     onUpdate(appointments);
   });
 };
@@ -135,8 +142,7 @@ export const subscribeToHospitalQueue = (
   const q = query(
     collection(db, 'appointments'),
     where('hospitalId', '==', hospitalId),
-    where('status', 'in', ['waiting', 'in-progress']),
-    orderBy('queuePosition', 'asc')
+    where('status', 'in', ['waiting', 'in-progress'])
   );
 
   return onSnapshot(q, (snapshot) => {
@@ -144,6 +150,10 @@ export const subscribeToHospitalQueue = (
       id: d.id,
       ...d.data()
     } as Appointment));
+    
+    // Sort client-side to avoid index requirement
+    appointments.sort((a, b) => a.queuePosition - b.queuePosition);
+    
     onUpdate(appointments);
   });
 };
@@ -215,4 +225,58 @@ export const getActiveAppointmentSession = async (patientId: string, doctorId: s
   const snap = await getDocs(q);
   if (snap.empty) return null;
   return { id: snap.docs[0].id, ...snap.docs[0].data() } as Appointment;
+};
+
+/**
+ * Resolves an active consultation/appointment session.
+ */
+export const resolveConsultation = async (appointmentId: string) => {
+  const ref = doc(db, 'appointments', appointmentId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return;
+  const appointment = snap.data() as Appointment;
+
+  // 1. Update status
+  await updateDoc(ref, {
+    status: 'done',
+    resolvedAt: serverTimestamp()
+  });
+
+  // 2. Create final medical record summary
+  const recordRef = doc(collection(db, 'medical_records'));
+  await addDoc(collection(db, 'medical_records'), {
+    patientId: appointment.patientId,
+    doctorId: appointment.acceptedBy?.id,
+    doctorName: appointment.acceptedBy?.name || 'Doctor',
+    date: serverTimestamp(),
+    type: 'consultation',
+    diagnosis: 'Consultation Completed',
+    details: {
+      appointmentId: appointmentId,
+      reason: appointment.reason,
+      summary: appointment.triage?.patientSummary || 'Regular consultation completed.'
+    },
+    createdAt: serverTimestamp()
+  });
+};
+
+/**
+ * Fetches all medical records for a specific patient.
+ */
+export const getPatientMedicalRecords = async (patientId: string) => {
+  const q = query(
+    collection(db, 'medical_records'),
+    where('patientId', '==', patientId)
+  );
+  const snap = await getDocs(q);
+  const records = snap.docs.map(d => ({ id: d.id, ...d.data() as any }));
+  
+  // Sort client-side to avoid index requirement
+  records.sort((a, b) => {
+    const timeA = a.createdAt?.seconds || 0;
+    const timeB = b.createdAt?.seconds || 0;
+    return timeB - timeA;
+  });
+  
+  return records;
 };

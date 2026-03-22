@@ -131,7 +131,11 @@ export const prescribeMedications = async (
       diagnosis: diagnosis,
       details: {
         prescriptionId: prescriptionRef.id,
-        medications: prescriptionData.items.map(i => `${i.name} (${i.quantity}${i.unit})`)
+        medications: prescriptionData.items.map(i => ({
+          name: i.name,
+          dosage: `${i.quantity}${i.unit}`,
+          instructions: i.instructions
+        }))
       },
       createdAt: serverTimestamp()
     });

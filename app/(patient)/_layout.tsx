@@ -74,6 +74,10 @@ export default function PatientLayout() {
         name="my-queue"
         options={{ href: null, title: 'My Queue' }}
       />
+      <Tabs.Screen
+        name="records"
+        options={{ href: null, title: 'Medical Records' }}
+      />
     </Tabs>
   );
 }
