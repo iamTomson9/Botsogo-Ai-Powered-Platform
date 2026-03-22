@@ -35,14 +35,12 @@ export default function ChatInterface({ isDoctorView }: { isDoctorView: boolean 
 
   const [sessionActive, setSessionActive] = useState(true);
   const [activeAppointmentId, setActiveAppointmentId] = useState<string | null>(null);
-  
-  // History states
+
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [pastRecords, setPastRecords] = useState<any[]>([]);
   const [aiInsights, setAiInsights] = useState<string | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
-  // Pharmacy Checklist states
   const [showChecklist, setShowChecklist] = useState(false);
   const [safetyCheck, setSafetyCheck] = useState({
     idVerified: false,
@@ -51,12 +49,10 @@ export default function ChatInterface({ isDoctorView }: { isDoctorView: boolean 
     instructionsExplained: false
   });
 
-  // Call simulation states
   const [isCalling, setIsCalling] = useState(false);
   const [isVideo, setIsVideo] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
 
-  // Prescription states
   const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
   const [prescriptionStep, setPrescriptionStep] = useState(0); // 0: select, 1: details
   const [medications, setMedications] = useState<any[]>([]);
@@ -66,11 +62,9 @@ export default function ChatInterface({ isDoctorView }: { isDoctorView: boolean 
   const [diagnosis, setDiagnosis] = useState('');
   const [isPrescribing, setIsPrescribing] = useState(false);
 
-  // AI Transcription states
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [transcription, setTranscription] = useState<string>('');
 
-  // AI Diagnosis states
   const [isDiagnosing, setIsDiagnosing] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
@@ -294,8 +288,7 @@ KEEP IT CONCISE, CLINICAL, AND ACTION-ORIENTED.`;
             
             await resolveConsultation(activeAppointmentId, patientId!, doctorId!);
             setSessionActive(false);
-            
-            // Generate Consultation Summary
+
             await generateConsultationAiSummary();
             
             router.back();
@@ -433,8 +426,7 @@ ${clinicalTranscript}`;
 
     setIsUpdating(true);
     try {
-      // In a real app, we'd update inventory here too. 
-      // For now, we simulate success and notify.
+
       Alert.alert("Success", "Medication dispensed and inventory updated!");
       setShowChecklist(false);
       setSafetyCheck({ idVerified: false, dosageConfirmed: false, allergiesChecked: false, instructionsExplained: false });
@@ -864,15 +856,12 @@ const styles = StyleSheet.create({
   attachBtn: { padding: 8, marginRight: 8 },
   textInput: { flex: 1, backgroundColor: '#f1f5f9', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, maxHeight: 100, minHeight: 40, fontSize: 16 },
   sendBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', marginLeft: 12 },
-  
-  // Call Overlay Styles
+
   callContainer: { flex: 1, backgroundColor: '#0f172a' },
   controlBtn: { width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
   endCallBtn: { backgroundColor: '#ef4444' },
   floatingEndCall: { position: 'absolute', bottom: 40, alignSelf: 'center', zIndex: 100, shadowColor: '#000', shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5 },
-  
-  // New Styles
-  // Modal Common Styles
+
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, maxHeight: '80%' },
   modalHeader: { padding: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
@@ -889,8 +878,7 @@ const styles = StyleSheet.create({
   confirmBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
   closedOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 80, backgroundColor: 'rgba(248, 250, 252, 0.9)', zIndex: 10, justifyContent: 'center', alignItems: 'center', padding: 40 },
   closedText: { textAlign: 'center', color: '#64748b', marginTop: 16, fontSize: 15, lineHeight: 22 },
-  
-  // Detailed Prescription Styles
+
   sectionTitle: { fontSize: 14, fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 16, marginTop: 24 },
   diagnosisInput: { backgroundColor: '#fff', padding: 16, borderRadius: 12, fontSize: 16, color: '#0f172a', borderColor: '#e2e8f0', borderWidth: 1, minHeight: 80, textAlignVertical: 'top' },
   detailCard: { backgroundColor: '#fff', padding: 16, borderRadius: 16, marginBottom: 16, borderColor: '#e2e8f0', borderWidth: 1 },
@@ -899,7 +887,6 @@ const styles = StyleSheet.create({
   detailLabel: { fontSize: 12, fontWeight: '600', color: '#94a3b8', marginBottom: 6 },
   detailInput: { backgroundColor: '#f8fafc', padding: 12, borderRadius: 8, fontSize: 15, color: '#0f172a', borderColor: '#e2e8f0', borderWidth: 1 },
 
-  // Insight Styles
   insightBox: { backgroundColor: '#fff', padding: 18, borderRadius: 20, borderColor: '#e2e8f0', borderWidth: 1 },
   insightHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
   insightTitle: { fontSize: 16, fontWeight: 'bold' },
@@ -913,20 +900,18 @@ const styles = StyleSheet.create({
   recordMedSummary: { fontSize: 12, color: '#64748b', marginTop: 4 },
   emptyText: { textAlign: 'center', color: '#94a3b8', marginTop: 10 },
 
-  // Checklist Styles
   checklistDesc: { color: '#64748b', marginBottom: 20, fontSize: 14, lineHeight: 20 },
   checkItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
   checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: '#cbd5e1', alignItems: 'center', justifyContent: 'center' },
   checkText: { fontSize: 15, color: '#334155' },
 
-  // Transcription Styles
   transcriptionFeed: { backgroundColor: '#fdf2f2', borderTopWidth: 2, borderTopColor: '#fecaca', maxHeight: 150 },
   transcriptionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, borderBottomWidth: 1, borderBottomColor: '#fee2e2' },
   liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#ef4444' },
   transcriptionTitle: { fontSize: 11, fontWeight: 'bold', color: '#ef4444', textTransform: 'uppercase' },
   transcriptionScroll: { flex: 1 },
   transcriptionText: { fontSize: 13, color: '#450a0a', fontStyle: 'italic', lineHeight: 18 },
-  // Image Styles
+
   imageWrapper: { 
     flexDirection: 'row', 
     alignItems: 'center', 

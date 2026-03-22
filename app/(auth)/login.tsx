@@ -22,7 +22,7 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email.trim(), password);
-      // useAuth hook running in _layout will catch standard success and auto-route
+
     } catch (err: any) {
       Alert.alert('Login Failed', err.message);
       setLoading(false); // Only set false on error. On success, AuthGuard immediately dismounts the component

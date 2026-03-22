@@ -16,7 +16,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     const inApp = segments[0] === '(app)';
 
     if (!user && !inAuthGroup && !inOnboarding) {
-      // If user was in a protected group and is now null, redirect to login
+
       const wasInApp = ['(admin)', '(doctor)', '(patient)', '(pharmacist)', '(app)', '(tabs)'].includes(segments[0]);
       if (wasInApp) {
         router.replace('/(auth)/login');
@@ -24,7 +24,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
         router.replace('/(onboarding)/splash');
       }
     } else if (user && !['(admin)', '(doctor)', '(patient)', '(pharmacist)', '(app)'].includes(segments[0])) {
-      // Logged in → go to role-based dashboard
+
       const role: string = user.role || 'patient';
       if (role === 'admin') {
         router.replace('/(admin)');
@@ -67,5 +67,4 @@ export default function RootLayout() {
     </>
   );
 }
-
 

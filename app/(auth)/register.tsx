@@ -25,11 +25,9 @@ export default function RegisterScreen() {
     setLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
-      
-      // Update Auth Profile
+
       await updateProfile(userCredential.user, { displayName: name });
 
-      // Create Firestore User Document for roles
       await setDoc(doc(db, 'users', userCredential.user.uid), {
         name,
         email: email.trim(),
@@ -37,7 +35,6 @@ export default function RegisterScreen() {
         createdAt: new Date().toISOString(),
       });
 
-      // App/_layout will automatically detect the user & role and route them
     } catch (err: any) {
       Alert.alert('Registration Failed', err.message);
       setLoading(false);

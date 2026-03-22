@@ -1,20 +1,3 @@
-/**
- * Appointment & Queue Service
- * 
- * Firestore schema:
- * 
- * appointments/{appointmentId}
- *   - patientId: string
- *   - patientName: string
- *   - hospitalId: string
- *   - hospitalName: string
- *   - reason: string
- *   - status: 'waiting' | 'in-progress' | 'done' | 'cancelled'
- *   - queuePosition: number
- *   - createdAt: Timestamp
- * 
- * hospitals/{hospitalId}/queue/{appointmentId} -> mirrors the appointment for fast reads
- */
 
 import {
   collection, doc, addDoc, getDocs, getDoc,
@@ -22,8 +5,6 @@ import {
   where, orderBy, onSnapshot, Unsubscribe
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
-
-// ─── Booking ────────────────────────────────────────────────────────────────
 
 export interface Appointment {
   id?: string;
@@ -53,13 +34,8 @@ export interface Appointment {
   };
 }
 
-/** Average minutes per consultation – used to estimate queue wait time */
 const AVG_CONSULT_MINUTES = 15;
 
-/**
- * Books a new appointment and returns the created appointment including
- * the queue position and estimated wait time.
- */
 export const bookAppointment = async (
   patientId: string,
   patientName: string,
@@ -70,7 +46,6 @@ export const bookAppointment = async (
   travelTimeMinutes: number = 0
 ): Promise<Appointment> => {
 
-  // How many people are already waiting at this hospital?
   const queueRef = collection(db, 'appointments');
   const queueQuery = query(
     queueRef,
@@ -99,13 +74,6 @@ export const bookAppointment = async (
   return { ...appointment, id: docRef.id };
 };
 
-// ─── Real-time subscription for a patient's own appointment ─────────────────
-
-/**
- * Listens for a patient's active (waiting / in-progress) appointments.
- * Calls `onUpdate` with the live list whenever Firestore changes.
- * Returns an unsubscribe function to clean up listeners.
- */
 export const subscribeToPatientQueue = (
   patientId: string,
   onUpdate: (appointments: Appointment[]) => void
@@ -121,8 +89,7 @@ export const subscribeToPatientQueue = (
       id: d.id,
       ...d.data()
     } as Appointment));
-    
-    // Sort client-side to avoid index requirement
+
     appointments.sort((a, b) => {
       const timeA = a.createdAt?.seconds || 0;
       const timeB = b.createdAt?.seconds || 0;
@@ -132,8 +99,6 @@ export const subscribeToPatientQueue = (
     onUpdate(appointments);
   });
 };
-
-// ─── Real-time subscription for a hospital's queue (used by Doctor) ──────────
 
 export const subscribeToHospitalQueue = (
   hospitalId: string,
@@ -150,15 +115,12 @@ export const subscribeToHospitalQueue = (
       id: d.id,
       ...d.data()
     } as Appointment));
-    
-    // Sort client-side to avoid index requirement
+
     appointments.sort((a, b) => a.queuePosition - b.queuePosition);
     
     onUpdate(appointments);
   });
 };
-
-// ─── Doctor updates status ────────────────────────────────────────────────────
 
 export const updateAppointmentStatus = async (
   appointmentId: string,
@@ -168,10 +130,6 @@ export const updateAppointmentStatus = async (
   await updateDoc(ref, { status });
 };
 
-/**
- * Marks an appointment as accepted by a specific doctor.
- * Updates status to 'in-progress'.
- */
 export const acceptAppointment = async (
   appointmentId: string,
   doctorId: string,
@@ -183,7 +141,6 @@ export const acceptAppointment = async (
   if (!snap.exists()) throw new Error("Appointment not found");
   const appointment = snap.data() as Appointment;
 
-  // 1. Update appointment status
   await updateDoc(ref, {
     status: 'in-progress',
     acceptedBy: {
@@ -192,9 +149,8 @@ export const acceptAppointment = async (
     }
   });
 
-  // 2. Post Clinical Brief to Chat
   if (appointment.triage) {
-    // Consistent chat ID format: [patientId]_[doctorId]
+
     const chatId = `${appointment.patientId}_${doctorId}`;
     const t = appointment.triage;
     
@@ -210,10 +166,6 @@ export const acceptAppointment = async (
   }
 };
 
-/**
- * Checks if there is an active 'in-progress' appointment session 
- * between a specific patient and doctor.
- */
 export const getActiveAppointmentSession = async (patientId: string, doctorId: string): Promise<Appointment | null> => {
   const q = query(
     collection(db, 'appointments'),
@@ -227,22 +179,17 @@ export const getActiveAppointmentSession = async (patientId: string, doctorId: s
   return { id: snap.docs[0].id, ...snap.docs[0].data() } as Appointment;
 };
 
-/**
- * Resolves an active consultation/appointment session.
- */
 export const resolveConsultation = async (appointmentId: string) => {
   const ref = doc(db, 'appointments', appointmentId);
   const snap = await getDoc(ref);
   if (!snap.exists()) return;
   const appointment = snap.data() as Appointment;
 
-  // 1. Update status
   await updateDoc(ref, {
     status: 'done',
     resolvedAt: serverTimestamp()
   });
 
-  // 2. Create final medical record summary
   const recordRef = doc(collection(db, 'medical_records'));
   await addDoc(collection(db, 'medical_records'), {
     patientId: appointment.patientId,
@@ -260,9 +207,6 @@ export const resolveConsultation = async (appointmentId: string) => {
   });
 };
 
-/**
- * Fetches all medical records for a specific patient.
- */
 export const getPatientMedicalRecords = async (patientId: string) => {
   const q = query(
     collection(db, 'medical_records'),
@@ -270,8 +214,7 @@ export const getPatientMedicalRecords = async (patientId: string) => {
   );
   const snap = await getDocs(q);
   const records = snap.docs.map(d => ({ id: d.id, ...d.data() as any }));
-  
-  // Sort client-side to avoid index requirement
+
   records.sort((a, b) => {
     const timeA = a.createdAt?.seconds || 0;
     const timeB = b.createdAt?.seconds || 0;

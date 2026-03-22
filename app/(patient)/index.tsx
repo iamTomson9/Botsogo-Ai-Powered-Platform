@@ -23,8 +23,7 @@ export default function PatientDashboard() {
     if (!user) return;
     
     fetchActiveAppointment();
-    
-    // Subscribe to AI insights
+
     const insightRef = doc(db, 'patient_insights', user.uid);
     const unsub = onSnapshot(insightRef, (snap) => {
       if (snap.exists()) {
@@ -46,7 +45,7 @@ export default function PatientDashboard() {
       const snapshot = await getDocs(q);
       if (!snapshot.empty) {
         const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as any));
-        // Sort by createdAt desc client-side
+
         const sorted = docs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
         setActiveAppointment(sorted[0]);
       }
@@ -60,7 +59,7 @@ export default function PatientDashboard() {
     setIsAuditing(true);
     try {
       await generatePatientInsights(user.uid);
-      // onSnapshot will handle the state update
+
     } catch (e) {
       console.error(e);
     } finally {

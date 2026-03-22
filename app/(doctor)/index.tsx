@@ -20,14 +20,12 @@ export default function DoctorDashboard() {
   useEffect(() => {
     if (!db) return;
 
-    // 1. Listen for waiting/consulting patients
     const qWaiting = query(collection(db, 'appointments'), where('status', 'in', ['waiting', 'consulting']));
     const unsubWaiting = onSnapshot(qWaiting, (snap) => {
       const waiting = snap.docs.filter(d => d.data().status === 'waiting').length;
       setStats(prev => ({ ...prev, waiting }));
     });
 
-    // 2. Listen for escalated/urgent cases
     const qUrgent = query(collection(db, 'appointments'), where('status', '==', 'escalated'));
     const unsubUrgent = onSnapshot(qUrgent, (snap) => {
       const urgent = snap.size;

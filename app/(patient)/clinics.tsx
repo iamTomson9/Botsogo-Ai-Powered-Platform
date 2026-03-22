@@ -12,7 +12,7 @@ export default function ClinicsScreen() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Load initial clinics (limit to 50 for performance)
+
     const activeClinics = (clinicsData as any[]).filter(c => c.operationalStatus?.display === 'Active').slice(0, 100);
     setClinics(activeClinics);
     setFilteredClinics(activeClinics);

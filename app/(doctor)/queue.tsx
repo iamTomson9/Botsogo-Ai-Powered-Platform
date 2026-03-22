@@ -240,7 +240,6 @@ export default function PatientQueue() {
   );
 }
 
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,

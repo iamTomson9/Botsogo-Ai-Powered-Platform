@@ -64,10 +64,8 @@ export default function Transcription() {
 
       if (!uri) throw new Error('No audio file saved.');
 
-      // Convert to base64
       const base64Audio = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
 
-      // Send to Gemini for transcription + clinical summary
       const payload = {
         model: 'gemini-1.5-flash',
         messages: [
@@ -105,7 +103,7 @@ Format the output clearly with section headers.`
       const data = await res.json();
       if (data.choices?.[0]?.message?.content) {
         const content = data.choices[0].message.content as string;
-        // Split on "Chief Complaint" to get transcript vs note
+
         const splitIndex = content.indexOf('Chief Complaint');
         if (splitIndex !== -1) {
           setTranscript(content.substring(0, splitIndex).trim());

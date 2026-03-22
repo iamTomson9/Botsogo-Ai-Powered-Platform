@@ -11,7 +11,6 @@ import {
   orderBy,
 } from "firebase/firestore";
 
-// Create Patient Profile
 export const createPatientProfile = async (userId: string, data: any) => {
   return addDoc(collection(db, "patients"), {
     userId,
@@ -20,13 +19,11 @@ export const createPatientProfile = async (userId: string, data: any) => {
   });
 };
 
-// Get all clinics
 export const getClinics = async () => {
   const snapshot = await getDocs(collection(db, "clinics"));
   return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
 };
 
-// Get nearby clinics by geolocation
 export const getNearByClinics = async (userLat: number, userLng: number, radiusKm = 5) => {
   const clinics = await getClinics();
   return clinics
@@ -41,7 +38,6 @@ export const getNearByClinics = async (userLat: number, userLng: number, radiusK
     });
 };
 
-// Book appointment
 export const bookAppointment = async (
   patientId: string,
   doctorId: string,
@@ -60,7 +56,6 @@ export const bookAppointment = async (
   });
 };
 
-// Add symptom input
 export const addSymptomInput = async (patientId: string, symptoms: string, severity: string) => {
   return addDoc(collection(db, "ai_interactions"), {
     patientId,
@@ -71,7 +66,6 @@ export const addSymptomInput = async (patientId: string, symptoms: string, sever
   });
 };
 
-// Track patient in queue
 export const updatePatientQueue = async (appointmentId: string, stage: string, estimatedWait: number) => {
   return updateDoc(doc(db, "appointments", appointmentId), {
     queueStage: stage,
@@ -80,7 +74,6 @@ export const updatePatientQueue = async (appointmentId: string, stage: string, e
   });
 };
 
-// Real-time listener for appointments
 export const listenToAppointments = (patientId: string, callback: (data: any[]) => void) => {
   const q = query(
     collection(db, "appointments"),
@@ -92,7 +85,6 @@ export const listenToAppointments = (patientId: string, callback: (data: any[]) 
   });
 };
 
-// Helpers
 const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number) => {
   const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;

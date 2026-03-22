@@ -93,7 +93,7 @@ export default function ChatSymptomChecker() {
   }, []);
 
   useEffect(() => {
-    // Scroll to bottom when messages update
+
     setTimeout(() => {
       scrollViewRef.current?.scrollToEnd({ animated: true });
     }, 100);
@@ -126,15 +126,12 @@ export default function ChatSymptomChecker() {
       newHistory.push(aiResponse);
       setMessages([...newHistory]);
 
-      // Handle function calls if the AI decides to perform actions
       if (aiResponse.tool_calls && aiResponse.tool_calls.length > 0) {
         const toolResponses = await handleToolCalls(aiResponse.tool_calls, userContext);
-        
-        // Push tool responses to history
+
         newHistory.push(...toolResponses);
         setMessages([...newHistory]);
-        
-        // Check if any tool response contains a triage report
+
         const triageResponse = toolResponses.find(r => r.content && JSON.parse(r.content).triageReport);
         if (triageResponse) {
           const content = JSON.parse(triageResponse.content!);
@@ -144,13 +141,12 @@ export default function ChatSymptomChecker() {
               distance: content.distance,
               eta: content.eta
           };
-          // Add a special pseudo-message to trigger the TriageCard rendering
+
           newHistory.push({ role: 'assistant', content: 'TRIAGE_REPORT_UI', tool_call_id: JSON.stringify(report) } as any);
           setMessages([...newHistory]);
           return; // Stop here, UI will handle the rest
         }
 
-        // Re-request AI logic with tool results
         const finalResponse = await sendChatRequest(newHistory, userContext);
         newHistory.push(finalResponse);
         setMessages([...newHistory]);
@@ -168,7 +164,7 @@ export default function ChatSymptomChecker() {
   };
 
   const renderMessage = (msg: Message, index: number) => {
-    // Hide tool execution messages from the UI
+
     if (msg.role === 'tool' || msg.tool_calls) {
       if (msg.tool_calls) {
         return (

@@ -23,7 +23,7 @@ export default function PatientMessages() {
   const fetchActiveConsultations = async () => {
     if (!user?.uid) return;
     try {
-      // Fetch appointments that are waiting, consulting, or recently in-progress
+
       const apptQuery = query(
         collection(db, 'appointments'),
         where('patientId', '==', user.uid),

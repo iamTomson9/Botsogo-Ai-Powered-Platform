@@ -1,4 +1,4 @@
-// Using Google Gemini's new API which natively supports OpenAI formats for free
+
 const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
 
 export interface Message {
@@ -112,8 +112,7 @@ export const handleToolCalls = async (toolCalls: any[], userContext?: { uid?: st
         if (activeClinics.length > 0 && !args.hospitalName) {
           if (userContext?.currentLocation) {
             const { latitude, longitude } = userContext.currentLocation;
-            
-            // Haversine formula helper
+
             const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
               const R = 6371;
               const dLat = (lat2 - lat1) * (Math.PI / 180);
@@ -135,7 +134,7 @@ export const handleToolCalls = async (toolCalls: any[], userContext?: { uid?: st
             if (nearest.distance !== Infinity) {
               const d = nearest.distance as number;
               distanceKm = d;
-              // Mock ETA: 2 mins per km + 5 mins buffer
+
               etaMinutes = Math.round(d * 2 + 5);
             }
           } else {
@@ -147,13 +146,11 @@ export const handleToolCalls = async (toolCalls: any[], userContext?: { uid?: st
         console.warn("Could not load clinics data or calculate distance.");
       }
 
-      // Use dynamic user context
       const userId = userContext?.uid || "anonymous-patient"; 
       let patientName = userContext?.name || "Patient";
       let patientAge = args.patientAge || 34;
       let patientGender = userContext?.gender || args.patientGender || "Unknown";
 
-      // Calculate age from DOB if available
       if (userContext?.dob) {
           const birthDate = new Date(userContext.dob);
           const today = new Date();
@@ -188,14 +185,11 @@ export const handleToolCalls = async (toolCalls: any[], userContext?: { uid?: st
           etaMinutes || 0
         );
         const appointmentId = fullAppointment.id;
- 
-        // Escalation Chat: Post a system message to a mock chat ID
-        // In a real app, this would be the actual chat between the patient and current medical team
+
         const chatId = "doctor_escalation_channel"; 
         const { addDoc, collection, serverTimestamp } = require('firebase/firestore');
         const { db } = require('../firebase/config');
-        
-        // 3. Create Escalation Record for Doctor's Dashboard
+
         await addDoc(collection(db, 'escalations'), {
           patientId: userId,
           patientName: patientName,

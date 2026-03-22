@@ -11,7 +11,6 @@ import { useAuth } from '../../hooks/useAuth';
 import clinicsData from '../../clinics.json';
 import { bookAppointment } from '../../services/appointmentService';
 
-// Only show active clinics
 const ACTIVE_CLINICS = (clinicsData as any[]).filter(c => c.status?.toLowerCase() === 'active' || !c.status);
 
 const REASON_PRESETS = [

@@ -18,30 +18,25 @@ export interface UserProfile {
   createdAt?: any;
 }
 
-// Get all users
 export const getAllUsers = async () => {
   const snapshot = await getDocs(collection(db, "users"));
   return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as UserProfile));
 };
 
-// Update user role
 export const updateUserRole = async (userId: string, role: UserProfile['role']) => {
   const userRef = doc(db, "users", userId);
   return updateDoc(userRef, { role, updatedAt: new Date() });
 };
 
-// Update user profile
 export const updateUserProfile = async (userId: string, data: Partial<UserProfile>) => {
   const userRef = doc(db, "users", userId);
   return updateDoc(userRef, { ...data, updatedAt: new Date() });
 };
 
-// Delete user (Note: This only deletes the Firestore doc, not the Auth account)
 export const deleteUserDoc = async (userId: string) => {
   return deleteDoc(doc(db, "users", userId));
 };
 
-// Admin Create User Route (Secondary App prevents admin logout)
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth as getSecondaryAuth, createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { setDoc } from "firebase/firestore";
@@ -64,18 +59,15 @@ export const createUserAdmin = async (data: Omit<UserProfile, 'id'>, password: s
   try {
     const userCredential = await createUserWithEmailAndPassword(secondaryAuth, data.email, password);
     const newUid = userCredential.user.uid;
-    
-    // Set display name on the auth object
+
     await updateProfile(userCredential.user, { displayName: data.name });
 
-    // Create Firestore document
     await setDoc(doc(db, "users", newUid), {
       ...data,
       id: newUid,
       createdAt: new Date(),
     });
 
-    // Sign out from the secondary instance just to clear it
     await secondaryAuth.signOut();
     
     return newUid;

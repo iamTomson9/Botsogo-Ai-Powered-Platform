@@ -1,50 +1,69 @@
-# Welcome to your Expo app 👋
+Botsogo: AI-Powered Healthcare Platform
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Hey everyone! super excited to share this project we've been working on. This is a 80% complete, AI-driven healthcare ecosystem built with React Native (Expo) and Firebase. 
 
-## Get started
+First and foremost, a HUGE shoutout and massive praise to my incredible team members, the AUTOBOTS  You guys totally made this possible. Your designs were absolutely stellar, your support was unmatched, and your ability to set milestones and keep us on track was the only reason we pulled this off. I couldn't have asked for a better team!
 
-1. Install dependencies
 
-   ```bash
-   npm install
-   ```
+What does this app do?
 
-2. Start the app
+Botsogo connects patients, doctors, pharmacists, and admins together using the power of AI (shoutout to Gemini 2.0!).To reduce quing, help monitor inventory and patients to ensure healthcare service is provided 
 
-   ```bash
-   npx expo start
-   ```
+Patients
+ can chat with an AI triage bot, 
+ check their symptoms, 
+ automatically book appointments if things look serious, 
+ and view their medical records.
 
-In the output, you'll find options to open the app in a
+Doctors 
+get AI-summarized notes from patient consultations, 
+AI-assisted image diagnostics for things like 
+X-rays or skin conditions, 
+and an easy way to prescribe medication.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+Pharmacists 
+get a streamlined dashboard to see incoming prescriptions, 
+manage heavy inventory, 
+and get alerts when stock is low.
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+Admins 
+have a bird's-eye view of everything: 
+app performance, 
+AI impact, 
+operational alerts, 
+and user role management.
 
-## Get a fresh project
+Developer Information
 
-When you're ready, run:
+Folder Structure
 
-```bash
-npm run reset-project
-```
+/app - This is where the magic of Expo Router happens. It handles all our navigation based on the user's role:
+/(patient) - All the screens the patients see (Home, Chat, Records).
+/(doctor) - The doctor's workspace (Appointments, Diagnostics, Prescribing).
+/(pharmacy) - Inventory and dispensing screens for the pharmacists.
+/(admin) - The big boss dashboard and user management routes.
+/(auth)` - Login and registration screens.
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+/components - These are our reusable elements throughout the app cards and others
+  /Admin, /Doctor, /Patient, /Pharmacy - Specific designs element for each role (like the Admin Dashboard KPI cards and the Doctor's prescription form).
+  /Chat - The AI chat interface components.
+  /UI - Generic buttons, inputs, and cards used everywhere.
 
-## Learn more
+/services - The "Backend" in our frontend. its more like a bridge between the frontend and backend 
+  aiService.ts - Where we talk to Google's Gemini AI to do symptom checking and image analysis.
+  authService.ts & userService.ts - Handling Firebase authentication, logins, and managing roles.
+  medicalService.ts - Fetching records, updating inventory, and saving prescriptions to Firestore.
 
-To learn more about developing your project with Expo, look at the following resources:
+/constants & /utils - Our theme colors, layout dimensions, and helpful little formatting functions so we don't repeat ourselves.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+/firebase - The config files that connect us to our Firebase backend database and auth.
 
-## Join the community
+How to run it locally
 
-Join our community of developers creating universal apps.
+1. Clone the repo.
+2. Run npm install to install all the dependencies.
+3. Have your Firebase config set up in firebase/config.ts.
+4. Run npx expo start to launch the Metro bundler. uses Expo 54 now but expo 55 is up and coming so some dependencies might be deprecated by that time
+5. Hit a for Android, i for iOS, or w for Web! and by the way for phone ensure you have expo installed you can simply scan or enter the link on expo go it start with exp://
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Again, thank you so much to the AUTOBOTS my wonderful teammate for pushing this across the finish line. We built something really cool! 

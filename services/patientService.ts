@@ -32,18 +32,16 @@ export const getPatientInsights = async (patientId: string): Promise<PatientInsi
 
 export const generatePatientInsights = async (patientId: string): Promise<string> => {
   try {
-    // 1. Fetch data
+
     const records = await getPatientMedicalRecords(patientId);
-    
-    // Fetch latest triage data from appointments
+
     const q = query(
       collection(db, 'appointments'),
       where('patientId', '==', patientId)
     );
     const apptsSnap = await getDocs(q);
     const allAppts = apptsSnap.docs.map(d => d.data());
-    
-    // Sort and limit client-side to avoid index requirement
+
     const appts = allAppts
       .sort((a: any, b: any) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
       .slice(0, 5);
@@ -52,7 +50,6 @@ export const generatePatientInsights = async (patientId: string): Promise<string
       return "No sufficient clinical history available to generate insights yet.";
     }
 
-    // 2. Prepare prompt
     const historyText = records.map(r => 
       `Date: ${r.createdAt?.toDate().toLocaleDateString()}, Type: ${r.type}, Diagnosis: ${r.diagnosis}, Details: ${JSON.stringify(r.details)}`
     ).join('\n');
@@ -63,7 +60,6 @@ export const generatePatientInsights = async (patientId: string): Promise<string
 
     const fullPrompt = `${INSIGHT_PROMPT}\n\nMEDICAL RECORDS:\n${historyText}\n\nTRIAGE HISTORY:\n${triageText}`;
 
-    // 3. Call Gemini
     const payload = {
       model: 'gemini-2.0-flash', // Using flash for speed/cost
       messages: [
@@ -80,7 +76,6 @@ export const generatePatientInsights = async (patientId: string): Promise<string
     const data = await res.json();
     const summary = data.choices?.[0]?.message?.content || "Could not generate summary at this time.";
 
-    // 4. Save to Firestore
     await setDoc(doc(db, 'patient_insights', patientId), {
       patientId,
       summary,

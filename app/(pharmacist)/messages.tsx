@@ -16,7 +16,7 @@ export default function PharmacistMessages() {
   useEffect(() => {
     const fetchContacts = async () => {
       try {
-        // Fetch both doctors and patients
+
         const [doctorSnap, patientSnap] = await Promise.all([
           getDocs(query(collection(db, 'users'), where('role', '==', 'doctor'))),
           getDocs(query(collection(db, 'users'), where('role', '==', 'patient'))),

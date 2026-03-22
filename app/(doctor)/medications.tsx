@@ -5,7 +5,6 @@ import { Ionicons, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-ico
 import { Colors } from '../../constants/Colors';
 import { useRouter } from 'expo-router';
 
-// We'll use a local mock or fetch from a service later
 const MOCK_MEDS = [
   { id: '1', name: 'Amoxicillin', type: 'Antibiotic', stock: 450, unit: 'capsules', price: 'P45.00' },
   { id: '2', name: 'Paracetamol', type: 'Analgesic', stock: 1200, unit: 'tablets', price: 'P12.50' },
@@ -21,7 +20,7 @@ export default function DoctorMedicationsScreen() {
   const [meds, setMeds] = useState(MOCK_MEDS);
 
   useEffect(() => {
-    // Simulate loading
+
     const timer = setTimeout(() => setLoading(false), 800);
     return () => clearTimeout(timer);
   }, []);

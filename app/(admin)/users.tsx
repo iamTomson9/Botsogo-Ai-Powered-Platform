@@ -9,12 +9,10 @@ export default function UserManagementScreen() {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  
-  // Edit State
+
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [isUpdating, setIsUpdating] = useState(false);
-  
-  // Create State
+
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [newUserData, setNewUserData] = useState({ name: '', email: '', password: '', role: 'patient' });

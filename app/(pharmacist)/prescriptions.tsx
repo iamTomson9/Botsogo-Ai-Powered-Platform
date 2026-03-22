@@ -34,7 +34,6 @@ interface Prescription {
   createdAt: any;
 }
 
-// Local mock data updated to match real structure
 const MOCK_PRESCRIPTIONS: Prescription[] = [
   { 
     id: 'm1', 
@@ -95,7 +94,7 @@ export default function PrescriptionsScreen() {
   const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
-    // Subscribe to Firestore prescriptions; fall back to mock if empty
+
     const unsub = onSnapshot(collection(db, 'prescriptions'), (snap) => {
       if (!snap.empty) {
         const dataList = snap.docs.map(doc => {
@@ -132,7 +131,7 @@ export default function PrescriptionsScreen() {
     setProcessing(true);
     try {
       if (selected.id.startsWith('m')) {
-        // Mock update for demo
+
         setPrescriptions(prev => prev.map(p => p.id === selected.id ? { ...p, status: 'dispensed' } : p));
       } else {
         await dispenseMedication(selected.id);

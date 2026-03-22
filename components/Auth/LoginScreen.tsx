@@ -44,7 +44,7 @@ export default function LoginScreen() {
       } else {
         await signup(email, password, name, role);
       }
-      // router.replace handles the navigation in AuthGuard
+
     } catch (err: any) {
       setError(err.message || "Failed to authenticate");
     } finally {

@@ -49,7 +49,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate fetching complex admin metrics from Firestore
+
     setTimeout(() => {
       setMetrics({
         flow: {
