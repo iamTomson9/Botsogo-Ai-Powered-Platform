@@ -25,6 +25,10 @@ export default function ChatInterface({ isDoctorView }: { isDoctorView: boolean 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const { user: currentUser } = useAuth();
+  const isPharmacist = currentUser?.role === 'pharmacist';
+  const themeColor = isDoctorView ? Colors.light.primary : (isPharmacist ? '#10b981' : '#5BAFB8');
+
   const [sessionActive, setSessionActive] = useState(true);
   const [activeAppointmentId, setActiveAppointmentId] = useState<string | null>(null);
   
@@ -33,6 +37,15 @@ export default function ChatInterface({ isDoctorView }: { isDoctorView: boolean 
   const [pastRecords, setPastRecords] = useState<any[]>([]);
   const [aiInsights, setAiInsights] = useState<string | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
+
+  // Pharmacy Checklist states
+  const [showChecklist, setShowChecklist] = useState(false);
+  const [safetyCheck, setSafetyCheck] = useState({
+    idVerified: false,
+    dosageConfirmed: false,
+    allergiesChecked: false,
+    instructionsExplained: false
+  });
 
   // Call simulation states
   const [isCalling, setIsCalling] = useState(false);
@@ -49,7 +62,10 @@ export default function ChatInterface({ isDoctorView }: { isDoctorView: boolean 
   const [diagnosis, setDiagnosis] = useState('');
   const [isPrescribing, setIsPrescribing] = useState(false);
 
-  const themeColor = isDoctorView ? Colors.light.secondary : Colors.light.primary;
+  // AI Transcription states
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [transcription, setTranscription] = useState<string>('');
+
   const chatId = user?.uid && id ? [user.uid, id].sort().join('_') : null;
 
   useEffect(() => {
@@ -249,6 +265,52 @@ export default function ChatInterface({ isDoctorView }: { isDoctorView: boolean 
     return `${m}:${s}`;
   };
 
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
+    if (isTranscribing) {
+      const phrases = [
+        "Patient reporting severe headache...",
+        "Blood pressure seems normal at 120/80...",
+        "Recommend starting on Paracetamol 500mg...",
+        "Follow up in two weeks if symptoms persist...",
+        "Check for any history of allergies to NSAIDs..."
+      ];
+      let i = 0;
+      interval = setInterval(() => {
+        setTranscription(prev => prev + (prev ? " " : "") + phrases[i % phrases.length]);
+        i++;
+      }, 3000);
+    }
+    return () => clearInterval(interval);
+  }, [isTranscribing]);
+
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const handleDispense = async () => {
+    const allChecked = Object.values(safetyCheck).every(v => v);
+    if (!allChecked) {
+      Alert.alert("Safety Alert", "Please complete all safety verification steps before dispensing.");
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      // In a real app, we'd update inventory here too. 
+      // For now, we simulate success and notify.
+      Alert.alert("Success", "Medication dispensed and inventory updated!");
+      setShowChecklist(false);
+      setSafetyCheck({ idVerified: false, dosageConfirmed: false, allergiesChecked: false, instructionsExplained: false });
+    } catch (e) {
+      Alert.alert("Error", "Failed to process dispensation.");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const toggleSafety = (key: keyof typeof safetyCheck) => {
+    setSafetyCheck(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -265,6 +327,12 @@ export default function ChatInterface({ isDoctorView }: { isDoctorView: boolean 
         <View style={styles.headerRight}>
           {isDoctorView && (
             <>
+              <TouchableOpacity 
+                onPress={() => setIsTranscribing(!isTranscribing)} 
+                style={[styles.iconBtn, { marginRight: 8, backgroundColor: isTranscribing ? '#ef4444' : 'transparent', borderRadius: 20 }]}
+              >
+                <FontAwesome5 name="microphone" size={18} color="#fff" />
+              </TouchableOpacity>
               <TouchableOpacity onPress={loadPatientHistory} style={[styles.iconBtn, { marginRight: 8 }]}>
                 <FontAwesome5 name="file-medical" size={18} color="#fff" />
               </TouchableOpacity>
@@ -279,6 +347,16 @@ export default function ChatInterface({ isDoctorView }: { isDoctorView: boolean 
                 <FontAwesome5 name="check-double" size={18} color="#fff" />
               </TouchableOpacity>
             </>
+          )}
+
+          {isPharmacist && (
+            <TouchableOpacity 
+              onPress={() => setShowChecklist(true)} 
+              style={[styles.prescribeBtn, { backgroundColor: '#059669' }]}
+            >
+              <FontAwesome5 name="hand-holding-medical" size={16} color="#fff" />
+              <Text style={styles.prescribeBtnText}>Dispense</Text>
+            </TouchableOpacity>
           )}
           <TouchableOpacity onPress={() => startCall(false)} style={styles.iconBtn}>
             <FontAwesome5 name="phone-alt" size={18} color="#fff" />
@@ -318,6 +396,18 @@ export default function ChatInterface({ isDoctorView }: { isDoctorView: boolean 
                 </View>
             )}
             />
+        )}
+
+        {isTranscribing && (
+          <View style={styles.transcriptionFeed}>
+            <View style={styles.transcriptionHeader}>
+              <View style={styles.liveDot} />
+              <Text style={styles.transcriptionTitle}>Live AI Transcription</Text>
+            </View>
+            <ScrollView style={styles.transcriptionScroll} contentContainerStyle={{ padding: 10 }}>
+              <Text style={styles.transcriptionText}>{transcription || "Listening for clinical notes..."}</Text>
+            </ScrollView>
+          </View>
         )}
         
         {/* Input Bar */}
@@ -525,6 +615,63 @@ export default function ChatInterface({ isDoctorView }: { isDoctorView: boolean 
         </SafeAreaView>
       </Modal>
 
+      {/* Pharmacy Safety Checklist Modal */}
+      <Modal visible={showChecklist} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <FontAwesome5 name="shield-alt" size={20} color="#10b981" />
+                <Text style={[styles.modalTitle, { color: '#0f172a' }]}>Safety Verification</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowChecklist(false)}>
+                <FontAwesome5 name="times" size={20} color="#64748b" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalBody}>
+              <Text style={styles.checklistDesc}>Please verify the following before dispensing medication:</Text>
+              
+              <TouchableOpacity style={styles.checkItem} onPress={() => toggleSafety('idVerified')}>
+                <View style={[styles.checkbox, safetyCheck.idVerified && { backgroundColor: '#10b981', borderColor: '#10b981' }]}>
+                  {safetyCheck.idVerified && <FontAwesome5 name="check" size={10} color="#fff" />}
+                </View>
+                <Text style={styles.checkText}>Patient Identity Verified (Photo ID)</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.checkItem} onPress={() => toggleSafety('dosageConfirmed')}>
+                <View style={[styles.checkbox, safetyCheck.dosageConfirmed && { backgroundColor: '#10b981', borderColor: '#10b981' }]}>
+                  {safetyCheck.dosageConfirmed && <FontAwesome5 name="check" size={10} color="#fff" />}
+                </View>
+                <Text style={styles.checkText}>Prescription Dosage & Frequency Confirmed</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.checkItem} onPress={() => toggleSafety('allergiesChecked')}>
+                <View style={[styles.checkbox, safetyCheck.allergiesChecked && { backgroundColor: '#10b981', borderColor: '#10b981' }]}>
+                  {safetyCheck.allergiesChecked && <FontAwesome5 name="check" size={10} color="#fff" />}
+                </View>
+                <Text style={styles.checkText}>Patient Allergy Record Reviewed</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.checkItem} onPress={() => toggleSafety('instructionsExplained')}>
+                <View style={[styles.checkbox, safetyCheck.instructionsExplained && { backgroundColor: '#10b981', borderColor: '#10b981' }]}>
+                  {safetyCheck.instructionsExplained && <FontAwesome5 name="check" size={10} color="#fff" />}
+                </View>
+                <Text style={styles.checkText}>Usage Instructions Explained to Patient</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.confirmBtn, { backgroundColor: '#10b981', marginTop: 20 }, !Object.values(safetyCheck).every(v => v) && { opacity: 0.5 }]} 
+                onPress={handleDispense}
+                disabled={isUpdating}
+              >
+                {isUpdating ? <ActivityIndicator color="#fff" /> : <Text style={styles.confirmBtnText}>Confirm & Dispense</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
     </View>
   );
 }
@@ -571,8 +718,13 @@ const styles = StyleSheet.create({
   floatingEndCall: { position: 'absolute', bottom: 40, alignSelf: 'center', zIndex: 100, shadowColor: '#000', shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5 },
   
   // New Styles
+  // Modal Common Styles
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, maxHeight: '80%' },
   modalHeader: { padding: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   modalTitle: { fontSize: 18, fontWeight: 'bold', color: '#fff', flex: 1, textAlign: 'center' },
+  modalBody: { gap: 20 },
+
   searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', margin: 20, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5, elevation: 2 },
   searchInput: { flex: 1, marginLeft: 10, fontSize: 16 },
   medCard: { backgroundColor: '#fff', padding: 16, borderRadius: 12, marginBottom: 12, flexDirection: 'row', alignItems: 'center', borderColor: '#e2e8f0', borderWidth: 1 },
@@ -606,4 +758,18 @@ const styles = StyleSheet.create({
   recordDiagnosis: { fontSize: 15, fontWeight: '700', color: '#1e293b' },
   recordMedSummary: { fontSize: 12, color: '#64748b', marginTop: 4 },
   emptyText: { textAlign: 'center', color: '#94a3b8', marginTop: 10 },
+
+  // Checklist Styles
+  checklistDesc: { color: '#64748b', marginBottom: 20, fontSize: 14, lineHeight: 20 },
+  checkItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+  checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: '#cbd5e1', alignItems: 'center', justifyContent: 'center' },
+  checkText: { fontSize: 15, color: '#334155' },
+
+  // Transcription Styles
+  transcriptionFeed: { backgroundColor: '#fdf2f2', borderTopWidth: 2, borderTopColor: '#fecaca', maxHeight: 150 },
+  transcriptionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, borderBottomWidth: 1, borderBottomColor: '#fee2e2' },
+  liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#ef4444' },
+  transcriptionTitle: { fontSize: 11, fontWeight: 'bold', color: '#ef4444', textTransform: 'uppercase' },
+  transcriptionScroll: { flex: 1 },
+  transcriptionText: { fontSize: 13, color: '#450a0a', fontStyle: 'italic', lineHeight: 18 },
 });

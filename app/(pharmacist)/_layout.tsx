@@ -75,6 +75,13 @@ export default function PharmacistLayout() {
           title: 'Chat',
         }}
       />
+      <Tabs.Screen
+        name="requests"
+        options={{
+          title: 'Requests',
+          tabBarIcon: ({ color }) => <FontAwesome5 name="shippings" size={20} color={color} />,
+        }}
+      />
     </Tabs>
   );
 }

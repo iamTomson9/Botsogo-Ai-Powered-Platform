@@ -1,6 +1,7 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { LayoutDashboard, Settings } from 'lucide-react-native';
+import { LayoutDashboard, Users, Settings } from 'lucide-react-native';
+import { FontAwesome5 } from '@expo/vector-icons';
 
 export default function AdminLayout() {
   return (
@@ -27,10 +28,24 @@ export default function AdminLayout() {
         }}
       />
       <Tabs.Screen
+        name="users"
+        options={{
+          title: 'Users',
+          tabBarIcon: ({ color }) => <Users size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',
           tabBarIcon: ({ color }) => <Settings size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="cms"
+        options={{
+          title: 'CMS',
+          tabBarIcon: ({ color }) => <FontAwesome5 name="warehouse" size={20} color={color} />,
         }}
       />
     </Tabs>
