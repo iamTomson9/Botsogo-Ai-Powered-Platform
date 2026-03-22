@@ -67,3 +67,4 @@ How to run it locally
 5. Hit a for Android, i for iOS, or w for Web! and by the way for phone ensure you have expo installed you can simply scan or enter the link on expo go it start with exp://
 
 Again, thank you so much to the AUTOBOTS my wonderful teammate for pushing this across the finish line. We built something really cool! 
+ coding is fun by the way
