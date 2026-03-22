@@ -1,57 +1,75 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput,
+  View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FontAwesome5 } from '@expo/vector-icons';
+import { collection, onSnapshot, query, updateDoc, doc, increment } from 'firebase/firestore';
+import { db } from '../../firebase/config';
+import { seedInventory, Medication } from '../../services/inventoryService';
 
 const TEAL = '#0E7490';
 
-interface DrugItem {
-  id: string;
-  name: string;
-  category: string;
-  stock: number;
-  minStock: number;
-  unit: string;
-}
-
-const INITIAL_INVENTORY: DrugItem[] = [
-  { id: '1', name: 'Amoxicillin 500mg', category: 'Antibiotic', stock: 240, minStock: 50, unit: 'capsules' },
-  { id: '2', name: 'Metformin 500mg', category: 'Anti-diabetic', stock: 120, minStock: 60, unit: 'tablets' },
-  { id: '3', name: 'Amlodipine 5mg', category: 'Antihypertensive', stock: 30, minStock: 40, unit: 'tablets' },
-  { id: '4', name: 'Omeprazole 20mg', category: 'PPI', stock: 15, minStock: 30, unit: 'capsules' },
-  { id: '5', name: 'Paracetamol 500mg', category: 'Analgesic', stock: 500, minStock: 100, unit: 'tablets' },
-  { id: '6', name: 'Ibuprofen 400mg', category: 'NSAID', stock: 80, minStock: 50, unit: 'tablets' },
-  { id: '7', name: 'Salbutamol Inhaler', category: 'Bronchodilator', stock: 8, minStock: 10, unit: 'inhalers' },
-  { id: '8', name: 'Ciprofloxacin 500mg', category: 'Antibiotic', stock: 60, minStock: 30, unit: 'tablets' },
-  { id: '9', name: 'Atorvastatin 10mg', category: 'Statin', stock: 90, minStock: 40, unit: 'tablets' },
-  { id: '10', name: 'Losartan 50mg', category: 'ARB', stock: 45, minStock: 30, unit: 'tablets' },
-  { id: '11', name: 'Doxycycline 100mg', category: 'Antibiotic', stock: 0, minStock: 20, unit: 'capsules' },
-  { id: '12', name: 'Fluconazole 150mg', category: 'Antifungal', stock: 25, minStock: 15, unit: 'tablets' },
+const INITIAL_SEED_DATA = [
+  { name: 'Amoxicillin 500mg', category: 'Antibiotic', stock: 240, minStock: 50, unit: 'capsules' },
+  { name: 'Metformin 500mg', category: 'Anti-diabetic', stock: 120, minStock: 60, unit: 'tablets' },
+  { name: 'Amlodipine 5mg', category: 'Antihypertensive', stock: 30, minStock: 40, unit: 'tablets' },
+  { name: 'Omeprazole 20mg', category: 'PPI', stock: 15, minStock: 30, unit: 'capsules' },
+  { name: 'Paracetamol 500mg', category: 'Analgesic', stock: 500, minStock: 100, unit: 'tablets' },
+  { name: 'Ibuprofen 400mg', category: 'NSAID', stock: 80, minStock: 50, unit: 'tablets' },
+  { name: 'Salbutamol Inhaler', category: 'Bronchodilator', stock: 8, minStock: 10, unit: 'inhalers' },
+  { name: 'Ciprofloxacin 500mg', category: 'Antibiotic', stock: 60, minStock: 30, unit: 'tablets' },
+  { name: 'Atorvastatin 10mg', category: 'Statin', stock: 90, minStock: 40, unit: 'tablets' },
+  { name: 'Losartan 50mg', category: 'ARB', stock: 45, minStock: 30, unit: 'tablets' },
+  { name: 'Doxycycline 100mg', category: 'Antibiotic', stock: 0, minStock: 20, unit: 'capsules' },
+  { name: 'Fluconazole 150mg', category: 'Antifungal', stock: 25, minStock: 15, unit: 'tablets' },
 ];
 
 function getStockStatus(stock: number, min: number): { color: string; label: string } {
-  if (stock === 0) return { color: '#ef4444', label: 'OUT OF STOCK' };
+  if (stock <= 0) return { color: '#ef4444', label: 'OUT OF STOCK' };
   if (stock < min) return { color: '#f59e0b', label: 'LOW STOCK' };
   return { color: '#10b981', label: 'IN STOCK' };
 }
 
 export default function InventoryScreen() {
-  const [inventory, setInventory] = useState<DrugItem[]>(INITIAL_INVENTORY);
+  const [inventory, setInventory] = useState<Medication[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    const q = query(collection(db, 'medications'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Medication));
+      setInventory(items);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleSeed = async () => {
+    await seedInventory(INITIAL_SEED_DATA);
+  };
 
   const filtered = inventory.filter(
     d => d.name.toLowerCase().includes(search.toLowerCase()) || d.category.toLowerCase().includes(search.toLowerCase())
   );
 
-  const adjust = (id: string, delta: number) => {
-    setInventory(prev =>
-      prev.map(d => d.id === id ? { ...d, stock: Math.max(0, d.stock + delta) } : d)
-    );
+  const adjust = async (id: string, delta: number) => {
+    const ref = doc(db, 'medications', id);
+    await updateDoc(ref, {
+      stock: increment(delta)
+    });
   };
 
   const lowCount = inventory.filter(d => d.stock < d.minStock).length;
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={TEAL} />
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -60,12 +78,10 @@ export default function InventoryScreen() {
           <Text style={styles.title}>Drug Inventory</Text>
           <Text style={styles.subtitle}>{inventory.length} drugs · {lowCount} low stock alerts</Text>
         </View>
-        {lowCount > 0 && (
-          <View style={styles.alertBadge}>
-            <FontAwesome5 name="exclamation-triangle" size={14} color="#92400e" />
-            <Text style={styles.alertBadgeText}>{lowCount}</Text>
-          </View>
-        )}
+        <TouchableOpacity onPress={handleSeed} style={styles.seedBtn}>
+          <FontAwesome5 name="sync" size={14} color="#fff" />
+          <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}> Seed</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.searchRow}>
@@ -139,6 +155,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fef3c7', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6,
   },
   alertBadgeText: { fontWeight: 'bold', color: '#92400e', fontSize: 14 },
+  seedBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 },
   searchRow: {
     flexDirection: 'row', alignItems: 'center', gap: 10, margin: 16,
     backgroundColor: '#fff', borderRadius: 14, paddingHorizontal: 16, paddingVertical: 12,

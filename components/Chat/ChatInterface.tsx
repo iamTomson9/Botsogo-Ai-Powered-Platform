@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform, Modal, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform, Modal, ActivityIndicator, ScrollView } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
@@ -12,31 +12,53 @@ type Message = {
   id: string; text: string; sender: 'me' | 'other'; time: string;
 };
 
+import { getActiveAppointmentSession } from '../../services/appointmentService';
+import { getMedicationsList, prescribeMedications } from '../../services/inventoryService';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 export default function ChatInterface({ isDoctorView }: { isDoctorView: boolean }) {
-  const { id, name } = useLocalSearchParams(); // `id` is the OTHER person's userId
+  const { id, name } = useLocalSearchParams(); 
   const { user } = useAuth();
   const router = useRouter();
   
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [sessionActive, setSessionActive] = useState(true);
   
   // Call simulation states
   const [isCalling, setIsCalling] = useState(false);
   const [isVideo, setIsVideo] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
 
-  const themeColor = isDoctorView ? Colors.light.secondary : Colors.light.primary;
+  // Prescription states
+  const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
+  const [prescriptionStep, setPrescriptionStep] = useState(0); // 0: select, 1: details
+  const [medications, setMedications] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedMeds, setSelectedMeds] = useState<string[]>([]);
+  const [medDetails, setMedDetails] = useState<Record<string, { quantity: string, instructions: string }>>({});
+  const [diagnosis, setDiagnosis] = useState('');
+  const [isPrescribing, setIsPrescribing] = useState(false);
 
-  // Determine an exact identical chat ID regardless of who initiates (e.g. sorted alphabetical)
+  const themeColor = isDoctorView ? Colors.light.secondary : Colors.light.primary;
   const chatId = user?.uid && id ? [user.uid, id].sort().join('_') : null;
 
   useEffect(() => {
+    const checkSession = async () => {
+      if (!user?.uid || !id) return;
+      const patientId = isDoctorView ? (id as string) : user.uid;
+      const doctorId = isDoctorView ? user.uid : (id as string);
+      const session = await getActiveAppointmentSession(patientId, doctorId);
+      setSessionActive(!!session);
+    };
+    checkSession();
+  }, [id, user]);
+
+  useEffect(() => {
     if (!chatId) return;
-    
     const messagesRef = collection(db, 'chats', chatId, 'messages');
     const q = query(messagesRef, orderBy('createdAt', 'asc'));
-
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const liveMessages = snapshot.docs.map(doc => {
         const data = doc.data();
@@ -44,7 +66,6 @@ export default function ChatInterface({ isDoctorView }: { isDoctorView: boolean 
         if (data.createdAt) {
           formattedTime = data.createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         }
-        
         return {
           id: doc.id,
           text: data.text,
@@ -55,7 +76,6 @@ export default function ChatInterface({ isDoctorView }: { isDoctorView: boolean 
       setMessages(liveMessages);
       setIsLoading(false);
     });
-
     return () => unsubscribe();
   }, [chatId]);
 
@@ -70,10 +90,9 @@ export default function ChatInterface({ isDoctorView }: { isDoctorView: boolean 
   }, [isCalling]);
 
   const handleSend = async () => {
-    if (!input.trim() || !chatId || !user) return;
+    if (!input.trim() || !chatId || !user || !sessionActive) return;
     const msgText = input.trim();
-    setInput(''); // Optimistic clear
-    
+    setInput('');
     try {
       await addDoc(collection(db, 'chats', chatId, 'messages'), {
         text: msgText,
@@ -85,14 +104,86 @@ export default function ChatInterface({ isDoctorView }: { isDoctorView: boolean 
     }
   };
 
+  const loadMedications = async () => {
+    console.log("Loading medications...");
+    try {
+      const list = await getMedicationsList();
+      console.log(`Loaded ${list.length} medications.`);
+      setMedications(list);
+    } catch (e) {
+      console.error("Error loading meds", e);
+    }
+  };
+
+  const handlePrescribeAction = async () => {
+    if (selectedMeds.length === 0 || !user?.uid || !id || !diagnosis.trim()) {
+      alert("Please select medications and provide a diagnosis.");
+      return;
+    }
+
+    const prescribedItems = selectedMeds.map(mid => ({
+      medicationId: mid,
+      quantity: parseFloat(medDetails[mid]?.quantity || '1'),
+      instructions: medDetails[mid]?.instructions || 'As directed'
+    }));
+
+    if (prescribedItems.some(i => isNaN(i.quantity) || i.quantity <= 0)) {
+      alert("Please enter valid quantities for all medications.");
+      return;
+    }
+
+    setIsPrescribing(true);
+    try {
+      const patientId = isDoctorView ? (id as string) : user.uid;
+      const results = await prescribeMedications(
+        prescribedItems, 
+        patientId, 
+        user.uid, 
+        user.name || user.displayName || 'Doctor',
+        diagnosis
+      );
+      
+      const itemSummaries = results.map(r => `• ${r.name}: ${r.quantity}${r.unit} - ${r.instructions}`).join('\n');
+      const automatedMsg = `💊 PRESCRIPTION ISSUED\n\nDiagnosis: ${diagnosis}\n\nMedications:\n${itemSummaries}\n\nPlease visit the pharmacy for dispensing.`;
+
+      await addDoc(collection(db, 'chats', chatId!, 'messages'), {
+        text: automatedMsg,
+        senderId: 'system_ai',
+        createdAt: serverTimestamp()
+      });
+      
+      setShowPrescriptionModal(false);
+      setPrescriptionStep(0);
+      setSelectedMeds([]);
+      setMedDetails({});
+      setDiagnosis('');
+      alert("Prescription issued successfully!");
+    } catch (e: any) {
+      alert(e.message || "Failed to prescribe. Check stock levels.");
+    } finally {
+      setIsPrescribing(false);
+    }
+  };
+
+  const toggleMedSelection = (medId: string) => {
+    setSelectedMeds(prev => 
+      prev.includes(medId) ? prev.filter(i => i !== medId) : [...prev, medId]
+    );
+  };
+
+  const updateMedDetail = (medId: string, field: 'quantity' | 'instructions', value: string) => {
+    setMedDetails(prev => ({
+      ...prev,
+      [medId]: { ... (prev[medId] || { quantity: '1', instructions: '' }), [field]: value }
+    }));
+  };
+
   const startCall = (video: boolean) => {
     setIsVideo(video);
     setIsCalling(true);
   };
 
-  const endCall = () => {
-    setIsCalling(false);
-  };
+  const endCall = () => setIsCalling(false);
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60).toString().padStart(2, '0');
@@ -114,6 +205,15 @@ export default function ChatInterface({ isDoctorView }: { isDoctorView: boolean 
           <Text style={styles.headerName}>{name || 'Unknown'}</Text>
         </View>
         <View style={styles.headerRight}>
+          {isDoctorView && (
+            <TouchableOpacity 
+              onPress={() => { setShowPrescriptionModal(true); setPrescriptionStep(0); loadMedications(); }} 
+              style={styles.prescribeBtn}
+            >
+              <FontAwesome5 name="pills" size={16} color="#fff" />
+              <Text style={styles.prescribeBtnText}>Prescribe</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity onPress={() => startCall(false)} style={styles.iconBtn}>
             <FontAwesome5 name="phone-alt" size={18} color="#fff" />
           </TouchableOpacity>
@@ -125,6 +225,13 @@ export default function ChatInterface({ isDoctorView }: { isDoctorView: boolean 
 
       {/* Chat Area */}
       <KeyboardAvoidingView style={styles.chatArea} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        {!sessionActive && (
+          <View style={styles.closedOverlay}>
+            <FontAwesome5 name="lock" size={24} color="#64748b" />
+            <Text style={styles.closedText}>This chat session is currently closed. It only opens when there is an active appointment.</Text>
+          </View>
+        )}
+        
         {isLoading ? (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
                 <ActivityIndicator color={themeColor} size="large" />
@@ -148,28 +255,158 @@ export default function ChatInterface({ isDoctorView }: { isDoctorView: boolean 
         )}
         
         {/* Input Bar */}
-        <View style={styles.inputContainer}>
-          <TouchableOpacity style={styles.attachBtn}>
+        <View style={[styles.inputContainer, !sessionActive && { opacity: 0.5 }]}>
+          <TouchableOpacity style={styles.attachBtn} disabled={!sessionActive}>
             <FontAwesome5 name="paperclip" size={20} color="#94a3b8" />
           </TouchableOpacity>
           <TextInput
             style={styles.textInput}
-            placeholder="Type a message..."
+            placeholder={sessionActive ? "Type a message..." : "Session closed"}
             value={input}
             onChangeText={setInput}
             multiline
+            editable={sessionActive}
           />
           <TouchableOpacity 
-            style={[styles.sendBtn, { backgroundColor: themeColor }, !input.trim() && { opacity: 0.5 }]} 
+            style={[styles.sendBtn, { backgroundColor: themeColor }, (!input.trim() || !sessionActive) && { opacity: 0.5 }]} 
             onPress={handleSend}
-            disabled={!input.trim()}
+            disabled={!input.trim() || !sessionActive}
           >
             <FontAwesome5 name="paper-plane" size={16} color="#fff" />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
 
-      {/* Live WebRTC Call Modal Overlay */}
+      {/* Prescription Modal */}
+      <Modal visible={showPrescriptionModal} animationType="slide">
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
+          <View style={[styles.modalHeader, { backgroundColor: themeColor }]}>
+            <TouchableOpacity onPress={() => {
+              if (prescriptionStep === 1) setPrescriptionStep(0);
+              else setShowPrescriptionModal(false);
+            }}>
+              <FontAwesome5 name={prescriptionStep === 1 ? "arrow-left" : "times"} size={22} color="#fff" />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>{prescriptionStep === 0 ? "Select Medications" : "Prescription Details"}</Text>
+            <View style={{ width: 22 }} />
+          </View>
+
+          {prescriptionStep === 0 ? (
+            <>
+              <View style={styles.searchBox}>
+                <FontAwesome5 name="search" size={14} color="#94a3b8" />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search medication..."
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                />
+              </View>
+
+              <FlatList
+                data={medications.filter(m => m.name.toLowerCase().includes(searchQuery.toLowerCase()))}
+                keyExtractor={item => item.id}
+                contentContainerStyle={{ padding: 20 }}
+                renderItem={({ item }) => {
+                  const selected = selectedMeds.includes(item.id);
+                  return (
+                    <TouchableOpacity 
+                      style={[styles.medCard, selected && { borderColor: themeColor, borderWidth: 2 }]} 
+                      onPress={() => toggleMedSelection(item.id)}
+                    >
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.medName}>{item.name}</Text>
+                        <Text style={styles.medCat}>{item.category}</Text>
+                      </View>
+                      {selected && <FontAwesome5 name="check-circle" size={20} color={themeColor} />}
+                    </TouchableOpacity>
+                  );
+                }}
+                ListEmptyComponent={
+                  <View style={{ alignItems: 'center', marginTop: 60, padding: 20 }}>
+                    <FontAwesome5 name="pills" size={48} color="#cbd5e1" />
+                    <Text style={{ marginTop: 16, color: '#64748b', textAlign: 'center', fontSize: 16 }}>
+                      No medications found in inventory.{"\n"}
+                      Please ask the pharmacist to seed the database.
+                    </Text>
+                  </View>
+                }
+              />
+
+              <View style={styles.modalFooter}>
+                <TouchableOpacity 
+                  style={[styles.confirmBtn, { backgroundColor: themeColor }, selectedMeds.length === 0 && { opacity: 0.5 }]} 
+                  onPress={() => setPrescriptionStep(1)}
+                  disabled={selectedMeds.length === 0}
+                >
+                  <Text style={styles.confirmBtnText}>Next: Enter Details ({selectedMeds.length})</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          ) : (
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20 }}>
+              <Text style={styles.sectionTitle}>Diagnosis</Text>
+              <TextInput
+                style={styles.diagnosisInput}
+                placeholder="Enter patient diagnosis..."
+                value={diagnosis}
+                onChangeText={setDiagnosis}
+                multiline
+              />
+
+              <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Medication Details</Text>
+              {selectedMeds.map(mid => {
+                const med = medications.find(m => m.id === mid);
+                return (
+                  <View key={mid} style={styles.detailCard}>
+                    <Text style={styles.detailMedName}>{med?.name}</Text>
+                    <View style={styles.detailRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.detailLabel}>Quantity/Grams</Text>
+                        <TextInput
+                          style={styles.detailInput}
+                          placeholder="e.g. 500"
+                          value={medDetails[mid]?.quantity || '1'}
+                          onChangeText={(v) => updateMedDetail(mid, 'quantity', v)}
+                          keyboardType="numeric"
+                        />
+                      </View>
+                    </View>
+                    <Text style={[styles.detailLabel, { marginTop: 12 }]}>Dosage Instructions</Text>
+                    <TextInput
+                      style={styles.detailInput}
+                      placeholder="e.g. Take twice daily after meals"
+                      value={medDetails[mid]?.instructions || ''}
+                      onChangeText={(v) => updateMedDetail(mid, 'instructions', v)}
+                      multiline
+                    />
+                  </View>
+                );
+              })}
+
+              <View style={{ height: 100 }} />
+            </ScrollView>
+          )}
+
+          {prescriptionStep === 1 && (
+            <View style={styles.modalFooter}>
+              <TouchableOpacity 
+                style={[styles.confirmBtn, { backgroundColor: themeColor }, (isPrescribing || !diagnosis.trim()) && { opacity: 0.5 }]} 
+                onPress={handlePrescribeAction}
+                disabled={isPrescribing || !diagnosis.trim()}
+              >
+                {isPrescribing ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.confirmBtnText}>Confirm Prescription</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
+        </SafeAreaView>
+      </Modal>
+
+      {/* Live WebRTC Call Modal Overlay (Existing) */}
       <Modal visible={isCalling} animationType="slide" transparent={false}>
         <View style={styles.callContainer}>
           {isCalling && chatId && (
@@ -206,6 +443,13 @@ const styles = StyleSheet.create({
   headerLeft: { flexDirection: 'row', alignItems: 'center' },
   headerRight: { flexDirection: 'row', alignItems: 'center' },
   iconBtn: { padding: 8 },
+  prescribeBtn: { 
+    flexDirection: 'row', alignItems: 'center', 
+    backgroundColor: 'rgba(255,255,255,0.2)', 
+    paddingHorizontal: 12, paddingVertical: 6, 
+    borderRadius: 12, marginRight: 12 
+  },
+  prescribeBtnText: { color: '#fff', fontSize: 12, fontWeight: 'bold', marginLeft: 6 },
   avatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', marginHorizontal: 12 },
   headerName: { fontSize: 18, fontWeight: 'bold', color: '#fff' },
   chatArea: { flex: 1 },
@@ -227,5 +471,28 @@ const styles = StyleSheet.create({
   callContainer: { flex: 1, backgroundColor: '#0f172a' },
   controlBtn: { width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
   endCallBtn: { backgroundColor: '#ef4444' },
-  floatingEndCall: { position: 'absolute', bottom: 40, alignSelf: 'center', zIndex: 100, shadowColor: '#000', shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5 }
+  floatingEndCall: { position: 'absolute', bottom: 40, alignSelf: 'center', zIndex: 100, shadowColor: '#000', shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5 },
+  
+  // New Styles
+  modalHeader: { padding: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#fff' },
+  searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', margin: 20, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5, elevation: 2 },
+  searchInput: { flex: 1, marginLeft: 10, fontSize: 16 },
+  medCard: { backgroundColor: '#fff', padding: 16, borderRadius: 12, marginBottom: 12, flexDirection: 'row', alignItems: 'center', borderColor: '#e2e8f0', borderWidth: 1 },
+  medName: { fontSize: 16, fontWeight: 'bold', color: '#0f172a' },
+  medCat: { fontSize: 12, color: '#64748b', marginTop: 2 },
+  modalFooter: { padding: 20, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#e2e8f0' },
+  confirmBtn: { padding: 16, borderRadius: 12, alignItems: 'center' },
+  confirmBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+  closedOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 80, backgroundColor: 'rgba(248, 250, 252, 0.9)', zIndex: 10, justifyContent: 'center', alignItems: 'center', padding: 40 },
+  closedText: { textAlign: 'center', color: '#64748b', marginTop: 16, fontSize: 15, lineHeight: 22 },
+  
+  // Detailed Prescription Styles
+  sectionTitle: { fontSize: 14, fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 },
+  diagnosisInput: { backgroundColor: '#fff', padding: 16, borderRadius: 12, fontSize: 16, color: '#0f172a', borderColor: '#e2e8f0', borderWidth: 1, minHeight: 80, textAlignVertical: 'top' },
+  detailCard: { backgroundColor: '#fff', padding: 16, borderRadius: 16, marginBottom: 16, borderColor: '#e2e8f0', borderWidth: 1 },
+  detailMedName: { fontSize: 16, fontWeight: 'bold', color: '#0f172a', marginBottom: 12 },
+  detailRow: { flexDirection: 'row', gap: 12 },
+  detailLabel: { fontSize: 12, fontWeight: '600', color: '#94a3b8', marginBottom: 6 },
+  detailInput: { backgroundColor: '#f8fafc', padding: 12, borderRadius: 8, fontSize: 15, color: '#0f172a', borderColor: '#e2e8f0', borderWidth: 1 },
 });

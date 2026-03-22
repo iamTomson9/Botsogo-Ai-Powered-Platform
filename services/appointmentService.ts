@@ -199,3 +199,20 @@ export const acceptAppointment = async (
     }
   }
 };
+
+/**
+ * Checks if there is an active 'in-progress' appointment session 
+ * between a specific patient and doctor.
+ */
+export const getActiveAppointmentSession = async (patientId: string, doctorId: string): Promise<Appointment | null> => {
+  const q = query(
+    collection(db, 'appointments'),
+    where('patientId', '==', patientId),
+    where('status', '==', 'in-progress'),
+    where('acceptedBy.id', '==', doctorId)
+  );
+  
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  return { id: snap.docs[0].id, ...snap.docs[0].data() } as Appointment;
+};

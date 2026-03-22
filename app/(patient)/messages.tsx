@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase/config';
+import { useAuth } from '../../hooks/useAuth';
 import { Colors } from '../../constants/Colors';
 
 export default function PatientMessages() {
@@ -12,16 +13,36 @@ export default function PatientMessages() {
   const [doctors, setDoctors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const { user } = useAuth();
+
   useEffect(() => {
-    const fetchDoctors = async () => {
+    const fetchDoctorsWithActiveSessions = async () => {
+      if (!db || !user?.uid) return;
       try {
-        const q = query(collection(db, 'users'), where('role', '==', 'doctor'));
+        const userUid = user.uid; 
+
+        const apptQuery = query(
+          collection(db, 'appointments'),
+          where('patientId', '==', userUid),
+          where('status', '==', 'in-progress')
+        );
+        const apptSnap = await getDocs(apptQuery);
+        const activeDoctorIds = apptSnap.docs.map(doc => doc.data().acceptedBy?.id).filter(Boolean);
+
+        if (activeDoctorIds.length === 0) {
+          setDoctors([]);
+          setLoading(false);
+          return;
+        }
+
+        // 2. Fetch doctor profiles
+        const q = query(collection(db, 'users'), where('role', '==', 'doctor'), where('__name__', 'in', activeDoctorIds));
         const querySnapshot = await getDocs(q);
         const fetched = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data(),
           role: 'Doctor',
-          lastMessage: 'Tap to start conversation...',
+          lastMessage: 'Active Consultation',
           unread: 0,
         }));
         setDoctors(fetched);
@@ -31,8 +52,8 @@ export default function PatientMessages() {
         setLoading(false);
       }
     };
-    fetchDoctors();
-  }, []);
+    fetchDoctorsWithActiveSessions();
+  }, [user]);
 
   const renderConversation = ({ item }: any) => (
     <TouchableOpacity 
