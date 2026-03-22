@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { FontAwesome5 } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { TouchableOpacity, Alert } from 'react-native';
 import { getAuth, signOut } from 'firebase/auth';
 import { Colors } from '../../constants/Colors';
@@ -28,7 +28,7 @@ export default function PharmacistLayout() {
         headerTintColor: '#fff',
         headerRight: () => (
           <TouchableOpacity onPress={handleLogout} style={{ marginRight: 20 }}>
-            <FontAwesome5 name="sign-out-alt" size={20} color="#fff" />
+            <Ionicons name="log-out-outline" size={24} color="#fff" />
           </TouchableOpacity>
         ),
       }}
@@ -36,36 +36,36 @@ export default function PharmacistLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Pharmacy',
-          tabBarIcon: ({ color }) => <FontAwesome5 name="home" size={22} color={color} />,
+          title: 'Portal',
+          tabBarIcon: ({ color }) => <Ionicons name="apps-outline" size={24} color={color} />,
         }}
       />
       <Tabs.Screen
         name="prescriptions"
         options={{
           title: 'Prescriptions',
-          tabBarIcon: ({ color }) => <FontAwesome5 name="file-prescription" size={22} color={color} />,
+          tabBarIcon: ({ color }) => <Ionicons name="clipboard-outline" size={24} color={color} />,
         }}
       />
       <Tabs.Screen
         name="dispense"
         options={{
+          href: null,
           title: 'Dispense',
-          tabBarIcon: ({ color }) => <FontAwesome5 name="capsules" size={22} color={color} />,
         }}
       />
       <Tabs.Screen
         name="inventory"
         options={{
           title: 'Inventory',
-          tabBarIcon: ({ color }) => <FontAwesome5 name="boxes" size={22} color={color} />,
+          tabBarIcon: ({ color }) => <Ionicons name="cube-outline" size={24} color={color} />,
         }}
       />
       <Tabs.Screen
         name="messages"
         options={{
+          href: null,
           title: 'Messages',
-          tabBarIcon: ({ color }) => <FontAwesome5 name="envelope" size={22} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -78,8 +78,8 @@ export default function PharmacistLayout() {
       <Tabs.Screen
         name="requests"
         options={{
-          title: 'Requests',
-          tabBarIcon: ({ color }) => <FontAwesome5 name="shippings" size={20} color={color} />,
+          title: 'Logistics',
+          tabBarIcon: ({ color }) => <Ionicons name="swap-horizontal-outline" size={24} color={color} />,
         }}
       />
     </Tabs>

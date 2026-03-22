@@ -4,15 +4,15 @@ import { getPatientMedicalRecords } from './appointmentService';
 
 const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
 
-const INSIGHT_PROMPT = `You are a clinical AI analyst. Analyze the provided medical history of a patient and generate a professional clinical summary.
-Include:
-1. Likely recurring conditions or chronic trends.
-2. Recent health trajectory (improving/concerning).
-3. Summary of past major diagnoses.
-4. Key medications the patient has been on recently.
-5. A brief "Clinical Note" for the attending physician.
+const INSIGHT_PROMPT = `You are a clinical AI auditor. Analyze the provided medical records and triage history.
+Generate a professional, longitudinal health audit including:
+1. **Clinical Summary**: High-level overview of the patient's current health state.
+2. **Health Trajectory**: Is the patient's condition stable, improving, or requiring intervention?
+3. **Recurring Trends**: Identify any chronic conditions or symptoms that appear across multiple visits.
+4. **Key Medications**: List the core medications they have been prescribed.
+5. **Next Steps & Risks**: Specific clinical advice or risks the doctor and patient should be aware of.
 
-KEEP IT CONCISE AND PROFESSIONAL. Use bullet points where appropriate.
+Format the output in clean Markdown with professional headings. KEEP IT CONCISE AND CLINICAL.
 Data provided below:
 `;
 
@@ -23,6 +23,7 @@ export interface PatientInsight {
 }
 
 export const getPatientInsights = async (patientId: string): Promise<PatientInsight | null> => {
+  if (!patientId) return null;
   const ref = doc(db, 'patient_insights', patientId);
   const snap = await getDoc(ref);
   if (snap.exists()) return snap.data() as PatientInsight;

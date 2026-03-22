@@ -1,71 +1,154 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { FontAwesome5 } from '@expo/vector-icons';
+import { FontAwesome5, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors } from '../../constants/Colors';
+import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
+import { db } from '../../firebase/config';
+import { useAuth } from '../../hooks/useAuth';
+
+const { width } = Dimensions.get('window');
 
 export default function DoctorDashboard() {
   const router = useRouter();
+  const { user } = useAuth();
+  const [stats, setStats] = useState({ waiting: 0, urgent: 0, today: 0 });
+  const [escalations, setEscalations] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const StatCard = ({ title, count, icon, color }: any) => (
-    <View style={[styles.statCard, { borderLeftColor: color }]}>
-      <View style={styles.statInfo}>
-        <Text style={styles.statTitle}>{title}</Text>
-        <Text style={styles.statCount}>{count}</Text>
+  useEffect(() => {
+    if (!db) return;
+
+    // 1. Listen for waiting/consulting patients
+    const qWaiting = query(collection(db, 'appointments'), where('status', 'in', ['waiting', 'consulting']));
+    const unsubWaiting = onSnapshot(qWaiting, (snap) => {
+      const waiting = snap.docs.filter(d => d.data().status === 'waiting').length;
+      setStats(prev => ({ ...prev, waiting }));
+    });
+
+    // 2. Listen for escalated/urgent cases
+    const qUrgent = query(collection(db, 'appointments'), where('status', '==', 'escalated'));
+    const unsubUrgent = onSnapshot(qUrgent, (snap) => {
+      const urgent = snap.size;
+      setStats(prev => ({ ...prev, urgent }));
+      setEscalations(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+
+    setLoading(false);
+    return () => {
+      unsubWaiting();
+      unsubUrgent();
+    };
+  }, []);
+
+  const StatCard = ({ title, count, icon, color, subtitle }: any) => (
+    <View style={styles.statCard}>
+      <View style={[styles.iconBox, { backgroundColor: color + '15' }]}>
+        <FontAwesome5 name={icon} size={20} color={color} />
       </View>
-      <View style={[styles.statIconContainer, { backgroundColor: `${color}15` }]}>
-        <FontAwesome5 name={icon} size={24} color={color} />
+      <View>
+        <Text style={styles.statCount}>{count}</Text>
+        <Text style={styles.statTitle}>{title}</Text>
+        {subtitle && <Text style={styles.statSubtitle}>{subtitle}</Text>}
       </View>
     </View>
   );
 
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right']}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={styles.greeting}>Dr. Surname,</Text>
-          <Text style={styles.dateText}>{new Date().toDateString()}</Text>
+          <View>
+            <Text style={styles.greeting}>Good day,</Text>
+            <Text style={styles.drName}>Dr. {user?.name || 'Practitioner'}</Text>
+          </View>
+          <TouchableOpacity style={styles.notificationBtn}>
+            <Ionicons name="notifications-outline" size={24} color="#0f172a" />
+            {stats.urgent > 0 && <View style={styles.notifBadge} />}
+          </TouchableOpacity>
         </View>
 
-        <View style={styles.statsContainer}>
-          <StatCard title="Patients Waiting" count="12" icon="users" color="#f59e0b" />
-          <StatCard title="AI Flagged Urgent" count="3" icon="exclamation-triangle" color="#ef4444" />
-          <StatCard title="Completed Today" count="18" icon="check-circle" color="#10b981" />
+        {escalations.length > 0 && (
+          <View style={styles.spotlight}>
+            <View style={styles.spotlightHeader}>
+              <View style={styles.urgentBadge}>
+                <MaterialCommunityIcons name="alert-decagram" size={14} color="#fff" />
+                <Text style={styles.urgentBadgeText}>URGENT ESCALATION</Text>
+              </View>
+              <Text style={styles.spotlightTime}>Just now</Text>
+            </View>
+            <Text style={styles.spotlightTitle}>Patient #{escalations[0].id.slice(-4).toUpperCase()}</Text>
+            <Text style={styles.spotlightDesc} numberOfLines={2}>
+              {escalations[0].reason || 'High severity symptoms reported via AI Triage.'}
+            </Text>
+            <TouchableOpacity 
+              style={styles.spotlightAction}
+              onPress={() => router.push('/(doctor)/escalations')}
+            >
+              <Text style={styles.spotlightActionText}>Review & Join</Text>
+              <Ionicons name="arrow-forward" size={18} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        <View style={styles.bentoGrid}>
+          <View style={[styles.bentoCol, { width: '100%' }]}>
+            <StatCard 
+              title="Patients in Queue" 
+              count={stats.waiting} 
+              icon="users" 
+              color="#3b82f6" 
+              subtitle="Average wait: 12m"
+            />
+          </View>
+          <View style={styles.bentoRow}>
+            <TouchableOpacity 
+              style={[styles.smallCard, { backgroundColor: '#fee2e2' }]}
+              onPress={() => router.push('/(doctor)/escalations')}
+            >
+              <MaterialCommunityIcons name="alert-circle" size={28} color="#ef4444" />
+              <Text style={styles.smallCardCount}>{stats.urgent}</Text>
+              <Text style={styles.smallCardTitle}>Urgent</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.smallCard, { backgroundColor: '#f0fdf4' }]}
+              onPress={() => router.push('/(doctor)/queue')}
+            >
+              <MaterialCommunityIcons name="check-all" size={28} color="#10b981" />
+              <Text style={styles.smallCardCount}>{stats.today}</Text>
+              <Text style={styles.smallCardTitle}>Completed</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <Text style={styles.sectionTitle}>Quick Actions</Text>
         <View style={styles.actionGrid}>
-          <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/(doctor)/queue')}>
-            <FontAwesome5 name="clipboard-list" size={24} color={Colors.light.secondary} />
-            <Text style={styles.actionText}>View Queue</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton}>
-            <FontAwesome5 name="notes-medical" size={24} color={Colors.light.secondary} />
-            <Text style={styles.actionText}>Add Notes</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton}>
-            <FontAwesome5 name="pills" size={24} color={Colors.light.secondary} />
-            <Text style={styles.actionText}>Prescriptions</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton}>
-            <FontAwesome5 name="calendar-alt" size={24} color={Colors.light.secondary} />
-            <Text style={styles.actionText}>Schedule</Text>
-          </TouchableOpacity>
+          {[
+            { label: 'Live Queue', icon: 'clipboard-list', route: '/(doctor)/queue', color: '#6366f1' },
+            { label: 'Diagnostics', icon: 'x-ray', route: '/(doctor)/diagnostics', color: '#a855f7' },
+            { label: 'Medications', icon: 'pills', route: '/(doctor)/medications', color: '#ec4899' },
+            { label: 'Transcription', icon: 'microphone', route: '/(doctor)/transcription', color: '#f59e0b' },
+          ].map((action, i) => (
+            <TouchableOpacity 
+              key={i} 
+              style={styles.actionBtn}
+              onPress={() => router.push(action.route as any)}
+            >
+              <View style={[styles.actionIcon, { backgroundColor: action.color + '15' }]}>
+                <FontAwesome5 name={action.icon} size={20} color={action.color} />
+              </View>
+              <Text style={styles.actionLabel}>{action.label}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
-        <Text style={styles.sectionTitle}>Recent AI Alerts</Text>
-        {/* Mock alert mapping */}
-        {[1, 2].map((i) => (
-          <View key={i} style={styles.alertCard}>
-            <FontAwesome5 name="robot" size={20} color="#64748b" />
-            <View style={styles.alertContext}>
-              <Text style={styles.alertTitle}>Patient #8274 flagged</Text>
-              <Text style={styles.alertDesc}>High severity symptoms: Chest pain, shortness of breath reported 5 mins ago.</Text>
-            </View>
-          </View>
-        ))}
-
+        <View style={styles.tipCard}>
+          <Ionicons name="bulb-outline" size={20} color={Colors.light.secondary} />
+          <Text style={styles.tipText}>
+            Use the **Transcription** tool for in-person consultations to automatically update patient history.
+          </Text>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -73,54 +156,37 @@ export default function DoctorDashboard() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8fafc' },
-  content: { padding: 20 },
-  header: { marginBottom: 24 },
-  greeting: { fontSize: 26, fontWeight: '700', color: '#0f172a' },
-  dateText: { fontSize: 16, color: '#64748b', marginTop: 4 },
-  statsContainer: { marginBottom: 32 },
-  statCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    borderLeftWidth: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  statInfo: { flex: 1 },
+  content: { padding: 20, paddingBottom: 40 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 },
+  greeting: { fontSize: 16, color: '#64748b', fontWeight: '500' },
+  drName: { fontSize: 24, fontWeight: '700', color: '#0f172a' },
+  notificationBtn: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
+  notifBadge: { position: 'absolute', top: 12, right: 12, width: 8, height: 8, borderRadius: 4, backgroundColor: '#ef4444', borderWidth: 1.5, borderColor: '#fff' },
+  spotlight: { backgroundColor: '#0f172a', borderRadius: 24, padding: 20, marginBottom: 32, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 20, elevation: 5 },
+  spotlightHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  urgentBadge: { backgroundColor: '#ef4444', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, gap: 4 },
+  urgentBadgeText: { color: '#fff', fontSize: 10, fontWeight: '900' },
+  spotlightTime: { color: '#64748b', fontSize: 11 },
+  spotlightTitle: { color: '#fff', fontSize: 20, fontWeight: '700', marginBottom: 4 },
+  spotlightDesc: { color: '#94a3b8', fontSize: 14, lineHeight: 20, marginBottom: 16 },
+  spotlightAction: { backgroundColor: Colors.light.secondary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 12, borderRadius: 16, gap: 8 },
+  spotlightActionText: { color: '#fff', fontWeight: '700' },
+  bentoGrid: { gap: 16, marginBottom: 32 },
+  bentoCol: { },
+  bentoRow: { flexDirection: 'row', gap: 16 },
+  statCard: { flex: 1, backgroundColor: '#fff', borderRadius: 24, padding: 20, flexDirection: 'row', alignItems: 'center', gap: 16, borderWidth: 1, borderColor: '#f1f5f9' },
+  iconBox: { width: 48, height: 48, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+  statCount: { fontSize: 24, fontWeight: '800', color: '#0f172a' },
   statTitle: { fontSize: 14, color: '#64748b', fontWeight: '500' },
-  statCount: { fontSize: 24, fontWeight: 'bold', color: '#0f172a', marginTop: 4 },
-  statIconContainer: { padding: 12, borderRadius: 12 },
-  sectionTitle: { fontSize: 18, fontWeight: '600', color: '#1e293b', marginBottom: 16 },
-  actionGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 32, gap: 12 },
-  actionButton: {
-    width: '48%',
-    backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 16,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  actionText: { marginTop: 12, fontWeight: '600', color: '#334155' },
-  alertCard: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-  },
-  alertContext: { marginLeft: 16, flex: 1 },
-  alertTitle: { fontSize: 16, fontWeight: '600', color: '#0f172a', marginBottom: 4 },
-  alertDesc: { fontSize: 14, color: '#475569', lineHeight: 20 }
+  statSubtitle: { fontSize: 11, color: '#94a3b8', marginTop: 2 },
+  smallCard: { flex: 1, borderRadius: 24, padding: 20, alignItems: 'center', justifyContent: 'center', gap: 4 },
+  smallCardCount: { fontSize: 22, fontWeight: '800', color: '#0f172a' },
+  smallCardTitle: { fontSize: 12, fontWeight: '600', color: '#475569' },
+  sectionTitle: { fontSize: 18, fontWeight: '700', color: '#1e293b', marginBottom: 16 },
+  actionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 32 },
+  actionBtn: { width: (width - 52) / 2, backgroundColor: '#fff', borderRadius: 20, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: '#f1f5f9' },
+  actionIcon: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
+  actionLabel: { fontSize: 14, fontWeight: '600', color: '#334155' },
+  tipCard: { backgroundColor: '#f8fafc', borderRadius: 20, padding: 16, flexDirection: 'row', gap: 12, borderStyle: 'dashed', borderWidth: 1, borderColor: '#cbd5e1' },
+  tipText: { flex: 1, fontSize: 13, color: '#64748b', lineHeight: 18 },
 });

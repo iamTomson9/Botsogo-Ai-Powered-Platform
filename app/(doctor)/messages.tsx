@@ -2,14 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { FontAwesome5 } from '@expo/vector-icons';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { Ionicons } from '@expo/vector-icons';
+import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { Colors } from '../../constants/Colors';
 
 export default function DoctorMessages() {
   const router = useRouter();
   const [patients, setPatients] = useState<any[]>([]);
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -20,8 +21,9 @@ export default function DoctorMessages() {
         const fetched = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data(),
-          lastMessage: 'Tap to start conversation...',
+          lastMessage: 'Ready for consultation...',
           unread: 0,
+          initials: (doc.data().name || 'P').split(' ').map((n:any) => n[0]).join('').toUpperCase().substring(0,2),
         }));
         setPatients(fetched);
       } catch (e) {
@@ -33,13 +35,17 @@ export default function DoctorMessages() {
     fetchPatients();
   }, []);
 
+  const filteredPatients = patients.filter(p => 
+    p.name?.toLowerCase().includes(search.toLowerCase())
+  );
+
   const renderConversation = ({ item }: any) => (
     <TouchableOpacity 
       style={styles.card} 
       onPress={() => router.push({ pathname: '/(doctor)/chat/[id]', params: { id: item.id, name: item.name } } as any)}
     >
       <View style={styles.avatar}>
-        <FontAwesome5 name="user" size={24} color={Colors.light.secondary} />
+        <Text style={styles.avatarText}>{item.initials}</Text>
       </View>
       <View style={styles.cardBody}>
         <View style={styles.headerRow}>
@@ -64,65 +70,103 @@ export default function DoctorMessages() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.title}>Messages</Text>
+        <Text style={styles.title}>Clinical Messaging</Text>
+        <Text style={styles.subtitle}>{patients.length} registered patients</Text>
+      </View>
+
+      <View style={styles.searchContainer}>
+        <View style={styles.searchBar}>
+          <Ionicons name="search" size={20} color="#94a3b8" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search patients by name..."
+            placeholderTextColor="#94a3b8"
+            value={search}
+            onChangeText={setSearch}
+          />
+        </View>
       </View>
 
       {loading ? (
-        <ActivityIndicator size="large" color={Colors.light.secondary} style={{ marginTop: 40 }} />
+        <ActivityIndicator size="large" color={Colors.light.secondary} style={{ marginTop: 60 }} />
       ) : (
         <FlatList
-          data={patients}
+          data={filteredPatients}
           keyExtractor={item => item.id}
           renderItem={renderConversation}
           contentContainerStyle={styles.listContent}
-          ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 40, color: '#64748b' }}>No registered patients found.</Text>}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+               <Ionicons name="chatbubbles-outline" size={64} color="#e2e8f0" />
+               <Text style={styles.emptyText}>No patients found matching "{search}"</Text>
+            </View>
+          }
         />
       )}
     </SafeAreaView>
   );
 }
 
+import { TextInput } from 'react-native';
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8fafc' },
   header: {
     padding: 20,
     backgroundColor: Colors.light.secondary,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1, shadowRadius: 12, elevation: 4,
-    zIndex: 10,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    paddingBottom: 24,
   },
-  title: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
-  listContent: { padding: 20 },
+  title: { fontSize: 24, fontWeight: '800', color: '#fff' },
+  subtitle: { fontSize: 13, color: '#ccfbf1', marginTop: 4, fontWeight: '500' },
+  searchContainer: { 
+    paddingHorizontal: 20, 
+    marginTop: -28,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    height: 56,
+    shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 15, elevation: 8,
+    gap: 12,
+  },
+  searchInput: { flex: 1, fontSize: 16, color: '#1e293b', fontWeight: '500' },
+  listContent: { padding: 20, paddingTop: 16 },
   card: {
     flexDirection: 'row',
     backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
+    borderRadius: 20,
+    padding: 18,
+    marginBottom: 14,
+    shadowColor: '#0f172a', shadowOpacity: 0.05, shadowRadius: 10, elevation: 2,
+    borderWidth: 1, borderColor: '#f1f5f9',
   },
   avatar: {
-    width: 50, height: 50, borderRadius: 25,
-    backgroundColor: '#ccfbf1',
+    width: 60, height: 60, borderRadius: 30,
+    backgroundColor: Colors.light.secondary + '15',
     justifyContent: 'center', alignItems: 'center',
     marginRight: 16,
   },
+  avatarText: { fontSize: 18, fontWeight: '800', color: Colors.light.secondary },
   cardBody: { flex: 1, justifyContent: 'center' },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
-  name: { fontSize: 16, fontWeight: 'bold', color: '#0f172a' },
-  time: { fontSize: 12, color: '#94a3b8' },
-  timeUnread: { color: Colors.light.secondary, fontWeight: '600' },
-  role: { fontSize: 13, color: Colors.light.secondary, marginBottom: 8 },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  name: { fontSize: 18, fontWeight: '800', color: '#1e293b' },
+  time: { fontSize: 12, color: '#94a3b8', fontWeight: '500' },
+  timeUnread: { color: Colors.light.secondary, fontWeight: '700' },
+  role: { fontSize: 12, color: Colors.light.secondary, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 },
   footerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  preview: { flex: 1, fontSize: 14, color: '#64748b', paddingRight: 12 },
-  previewUnread: { fontWeight: '600', color: '#334155' },
+  preview: { flex: 1, fontSize: 14, color: '#64748b', paddingRight: 10, fontWeight: '400' },
+  previewUnread: { fontWeight: '700', color: '#334155' },
   badge: {
     backgroundColor: Colors.light.secondary,
-    borderRadius: 12, minWidth: 24, height: 24,
+    borderRadius: 10, minWidth: 22, height: 22,
     justifyContent: 'center', alignItems: 'center', paddingHorizontal: 6,
   },
-  badgeText: { color: '#fff', fontSize: 12, fontWeight: 'bold' }
+  badgeText: { color: '#fff', fontSize: 11, fontWeight: '900' },
+  emptyContainer: { alignItems: 'center', paddingVertical: 80, gap: 16 },
+  emptyText: { color: '#94a3b8', fontSize: 15, textAlign: 'center', paddingHorizontal: 40 },
 });

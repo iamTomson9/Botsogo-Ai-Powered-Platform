@@ -68,6 +68,7 @@ export interface PrescribedItem {
 export const prescribeMedications = async (
   prescribedItems: PrescribedItem[],
   patientId: string,
+  patientName: string,
   doctorId: string,
   doctorName: string,
   diagnosis: string
@@ -94,17 +95,13 @@ export const prescribeMedications = async (
       });
     }
 
-    // 2. Perform deductions
-    for (const { ref, quantity } of medDocs) {
-      transaction.update(ref, {
-        stock: increment(-quantity)
-      });
-    }
+    // 2. (Stock deduction removed from here - moved to pharmacist dispense phase)
 
     // 3. Record the detailed prescription
     const prescriptionRef = doc(collection(db, 'prescriptions'));
     const prescriptionData = {
       patientId,
+      patientName,
       doctorId,
       doctorName,
       diagnosis,
@@ -146,5 +143,43 @@ export const prescribeMedications = async (
       unit: m.data.unit,
       instructions: m.instructions
     }));
+  });
+};
+
+/**
+ * Marks a prescription as dispensed and atomically decrements stock for each item.
+ */
+export const dispenseMedication = async (prescriptionId: string) => {
+  return await runTransaction(db, async (transaction) => {
+    const rxRef = doc(db, 'prescriptions', prescriptionId);
+    const rxSnap = await transaction.get(rxRef);
+    if (!rxSnap.exists()) throw new Error("Prescription not found");
+    
+    const rxData = rxSnap.data();
+    if (rxData.status === 'dispensed') throw new Error("Prescription already dispensed");
+
+    // Process each item in the prescription
+    for (const item of rxData.items) {
+      const medRef = doc(db, COLLECTION_NAME, item.medicationId);
+      const medSnap = await transaction.get(medRef);
+      
+      if (medSnap.exists()) {
+        const medData = medSnap.data() as Medication;
+        if (medData.stock < item.quantity) {
+          throw new Error(`Insufficient stock for ${item.name}. Available: ${medData.stock}`);
+        }
+        transaction.update(medRef, {
+          stock: increment(-item.quantity)
+        });
+      }
+    }
+
+    // Update prescription status
+    transaction.update(rxRef, {
+      status: 'dispensed',
+      dispensedAt: serverTimestamp()
+    });
+
+    return true;
   });
 };

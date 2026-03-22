@@ -4,7 +4,7 @@ import {
   ActivityIndicator, Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { FontAwesome5 } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
 import { Colors } from '../../constants/Colors';
@@ -69,7 +69,7 @@ export default function Transcription() {
 
       // Send to Gemini for transcription + clinical summary
       const payload = {
-        model: 'gemini-2.5-flash',
+        model: 'gemini-1.5-flash',
         messages: [
           {
             role: 'user',
@@ -149,9 +149,9 @@ Format the output clearly with section headers.`
             onPress={isRecording ? stopRecording : startRecording}
             disabled={transcribing}
           >
-            <FontAwesome5
-              name={isRecording ? 'stop' : 'microphone'}
-              size={32}
+            <Ionicons
+              name={isRecording ? 'stop' : 'mic'}
+              size={40}
               color="#fff"
             />
           </TouchableOpacity>
@@ -172,8 +172,8 @@ Format the output clearly with section headers.`
         {transcript && !transcribing && (
           <View style={styles.resultBox}>
             <View style={styles.resultHeader}>
-              <FontAwesome5 name="file-alt" size={16} color={Colors.light.secondary} />
-              <Text style={styles.resultTitle}>Verbatim Transcript</Text>
+              <Ionicons name="document-text-outline" size={18} color={Colors.light.secondary} />
+              <Text style={styles.resultTitle}>Voice Transcription</Text>
             </View>
             <Text style={styles.resultText}>{transcript}</Text>
           </View>
@@ -181,15 +181,15 @@ Format the output clearly with section headers.`
 
         {/* Clinical Summary */}
         {summary && !transcribing && (
-          <View style={[styles.resultBox, { borderLeftColor: '#10b981', borderLeftWidth: 4 }]}>
+          <View style={[styles.resultBox, { borderColor: '#10b981', borderLeftWidth: 6 }]}>
             <View style={styles.resultHeader}>
-              <FontAwesome5 name="notes-medical" size={16} color="#10b981" />
-              <Text style={[styles.resultTitle, { color: '#10b981' }]}>AI Clinical Note</Text>
+              <Ionicons name="medical-outline" size={18} color="#10b981" />
+              <Text style={[styles.resultTitle, { color: '#10b981' }]}>Structured Clinical Note</Text>
             </View>
             <Text style={styles.resultText}>{summary}</Text>
             <View style={styles.disclaimer}>
-              <FontAwesome5 name="exclamation-triangle" size={11} color="#f59e0b" />
-              <Text style={styles.disclaimerText}>Review and verify all AI-generated clinical notes before adding to patient records.</Text>
+              <Ionicons name="shield-checkmark" size={14} color="#065f46" />
+              <Text style={styles.disclaimerText}>AI-assisted documentation. Please verify facts before finalizing the medical record.</Text>
             </View>
           </View>
         )}
@@ -203,26 +203,26 @@ const styles = StyleSheet.create({
   header: { padding: 20, backgroundColor: Colors.light.secondary, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
   title: { fontSize: 22, fontWeight: 'bold', color: '#fff' },
   subtitle: { fontSize: 14, color: '#ccfbf1', marginTop: 4 },
-  content: { padding: 20, gap: 16 },
-  recordingCard: { backgroundColor: '#fff', borderRadius: 24, padding: 32, alignItems: 'center', gap: 16, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, elevation: 4 },
-  liveRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  liveDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#ef4444' },
-  liveText: { fontSize: 13, fontWeight: '800', color: '#ef4444', letterSpacing: 1 },
-  timerText: { fontSize: 20, fontWeight: 'bold', color: '#0f172a' },
+  content: { padding: 20, gap: 16, paddingBottom: 40 },
+  recordingCard: { backgroundColor: '#fff', borderRadius: 28, padding: 32, alignItems: 'center', gap: 20, shadowColor: '#0f172a', shadowOpacity: 0.08, shadowRadius: 15, elevation: 5 },
+  liveRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#fef2f2', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
+  liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#ef4444' },
+  liveText: { fontSize: 12, fontWeight: '900', color: '#ef4444', letterSpacing: 1 },
+  timerText: { fontSize: 24, fontWeight: '800', color: '#1e293b' },
   recordBtn: {
-    width: 88, height: 88, borderRadius: 44,
+    width: 96, height: 96, borderRadius: 48,
     backgroundColor: Colors.light.secondary, justifyContent: 'center', alignItems: 'center',
-    shadowColor: Colors.light.secondary, shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4, shadowRadius: 16, elevation: 8,
+    shadowColor: Colors.light.secondary, shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3, shadowRadius: 20, elevation: 10,
   },
   recordBtnActive: { backgroundColor: '#ef4444', shadowColor: '#ef4444' },
-  recordLabel: { fontSize: 15, color: '#64748b', fontWeight: '500' },
-  loadingBox: { alignItems: 'center', padding: 32, gap: 12 },
-  loadingText: { color: '#64748b', fontSize: 14, textAlign: 'center' },
-  resultBox: { backgroundColor: '#fff', borderRadius: 20, padding: 20, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
-  resultHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
-  resultTitle: { fontSize: 16, fontWeight: 'bold', color: Colors.light.secondary },
-  resultText: { fontSize: 15, color: '#334155', lineHeight: 26 },
-  disclaimer: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginTop: 16, padding: 12, backgroundColor: '#fef9c3', borderRadius: 10 },
-  disclaimerText: { flex: 1, fontSize: 12, color: '#92400e', lineHeight: 18 },
+  recordLabel: { fontSize: 16, color: '#64748b', fontWeight: '600' },
+  loadingBox: { alignItems: 'center', padding: 40, gap: 16 },
+  loadingText: { color: '#64748b', fontSize: 15, textAlign: 'center', lineHeight: 22, fontWeight: '500' },
+  resultBox: { backgroundColor: '#fff', borderRadius: 24, padding: 24, shadowColor: '#0f172a', shadowOpacity: 0.05, shadowRadius: 12, elevation: 3 },
+  resultHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+  resultTitle: { fontSize: 18, fontWeight: '800', color: Colors.light.secondary },
+  resultText: { fontSize: 15, color: '#334155', lineHeight: 28, fontWeight: '400' },
+  disclaimer: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 20, padding: 14, backgroundColor: '#f0fdf4', borderRadius: 12, borderWidth: 1, borderColor: '#dcfce7' },
+  disclaimerText: { flex: 1, fontSize: 12, color: '#065f46', lineHeight: 18, fontWeight: '600' },
 });

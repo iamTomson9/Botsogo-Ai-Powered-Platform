@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { FontAwesome5 } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import { Colors } from '../../constants/Colors';
@@ -17,16 +17,30 @@ const SEVERITY_COLORS: Record<string, string> = {
 };
 
 const TriageCard = ({ report, onDone }: { report: any, onDone: () => void }) => {
+  const severityColor = SEVERITY_COLORS[report.severity] || Colors.light.primary;
+  
   return (
     <View style={styles.triageCard}>
-      <View style={styles.successCircle}>
-        <FontAwesome5 name="check" size={24} color="#fff" />
+      <View style={[styles.successCircle, { backgroundColor: severityColor }]}>
+        <Ionicons name="checkmark" size={32} color="#fff" />
       </View>
-      <Text style={styles.triageTitle}>Appointment Booked!</Text>
-      <Text style={styles.triageSummary}>
-        Your request has been sent to **{report.hospitalName || "General Hospital"}**. 
+      <Text style={styles.triageTitle}>Booking Confirmed</Text>
+      
+      <View style={[styles.severityBadge, { backgroundColor: severityColor + '15' }]}>
+        <Text style={[styles.severityText, { color: severityColor }]}>
+          {report.triageCategory?.toUpperCase() || report.severity?.toUpperCase()}
+        </Text>
+      </View>
+
+      <View style={styles.summaryBox}>
+        <Text style={styles.summaryLabel}>Clinical Summary for Doctor:</Text>
+        <Text style={styles.summaryText}>{report.patientSummary}</Text>
+      </View>
+
+      <Text style={styles.triageInfo}>
+        Routed to <Text style={{ fontWeight: 'bold' }}>{report.hospitalName || "General Hospital"}</Text>. 
         {report.distance && (
-            <Text style={{ fontWeight: '600', color: Colors.light.primary }}>
+            <Text style={{ color: Colors.light.primary }}>
                {"\n"}📍 {report.distance.toFixed(1)} km away
             </Text>
         )}
@@ -35,11 +49,11 @@ const TriageCard = ({ report, onDone }: { report: any, onDone: () => void }) => 
                {" • "}🕒 ETA: {report.eta} mins
             </Text>
         )}
-        {"\n"}A doctor will review your triage summary shortly.
       </Text>
 
-      <TouchableOpacity style={styles.queueBtn} onPress={onDone}>
-        <Text style={styles.queueBtnText}>View My Queue</Text>
+      <TouchableOpacity style={[styles.queueBtn, { backgroundColor: Colors.light.primary }]} onPress={onDone}>
+        <Text style={styles.queueBtnText}>Enter Digital Queue</Text>
+        <Ionicons name="arrow-forward" size={18} color="#fff" style={{ marginLeft: 8 }} />
       </TouchableOpacity>
     </View>
   );
@@ -226,7 +240,7 @@ export default function ChatSymptomChecker() {
             onPress={handleSend}
             disabled={!input.trim() || isLoading}
           >
-            <FontAwesome5 name="paper-plane" size={16} color="#fff" />
+            <Ionicons name="send" size={18} color="#fff" />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -346,49 +360,90 @@ const styles = StyleSheet.create({
   },
   triageCard: {
     backgroundColor: '#fff',
-    borderRadius: 24,
-    padding: 24,
+    borderRadius: 32,
+    padding: 28,
     marginBottom: 20,
     alignItems: 'center',
-    shadowColor: Colors.light.primary,
+    shadowColor: '#0f172a',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.1,
     shadowRadius: 20,
     elevation: 8,
   },
   successCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#10b981',
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 5,
   },
   triageTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
+    fontSize: 24,
+    fontWeight: '900',
     color: '#0f172a',
-    marginBottom: 12,
+    marginBottom: 8,
   },
-  triageSummary: {
-    fontSize: 15,
-    color: '#475569',
+  severityBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginBottom: 20,
+  },
+  severityText: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  summaryBox: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 20,
+    padding: 20,
+    width: '100%',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  summaryLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#94a3b8',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+  },
+  summaryText: {
+    fontSize: 14,
+    color: '#334155',
+    lineHeight: 20,
+    fontWeight: '500',
+  },
+  triageInfo: {
+    fontSize: 14,
+    color: '#64748b',
     lineHeight: 22,
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: 28,
   },
   queueBtn: {
-    backgroundColor: Colors.light.primary,
-    paddingVertical: 14,
+    paddingVertical: 18,
     paddingHorizontal: 32,
-    borderRadius: 16,
+    borderRadius: 20,
     width: '100%',
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    shadowColor: Colors.light.primary,
+    shadowOpacity: 0.3,
+    shadowRadius: 15,
+    elevation: 8,
   },
   queueBtnText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '800',
   },
 });

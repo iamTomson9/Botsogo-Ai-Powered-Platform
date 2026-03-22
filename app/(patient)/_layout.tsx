@@ -1,7 +1,7 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import { FontAwesome5 } from '@expo/vector-icons';
-import { TouchableOpacity, Alert } from 'react-native';
 import { getAuth, signOut } from 'firebase/auth';
+import { TouchableOpacity, Alert } from 'react-native';
 import { Colors } from '../../constants/Colors';
 
 const handleLogout = () => {
@@ -19,6 +19,8 @@ export default function PatientLayout() {
         tabBarStyle: {
           backgroundColor: Colors.light.surface,
           borderTopColor: '#e2e8f0',
+          height: 60,
+          paddingBottom: 8,
         },
         headerStyle: {
           backgroundColor: Colors.light.primary,
@@ -26,7 +28,7 @@ export default function PatientLayout() {
         headerTintColor: '#fff',
         headerRight: () => (
           <TouchableOpacity onPress={handleLogout} style={{ marginRight: 20 }}>
-            <FontAwesome5 name="sign-out-alt" size={20} color="#fff" />
+            <Ionicons name="log-out-outline" size={24} color="#fff" />
           </TouchableOpacity>
         ),
       }}
@@ -34,50 +36,46 @@ export default function PatientLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Dashboard',
-          tabBarIcon: ({ color }) => <FontAwesome5 name="home" size={24} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="symptom-checker"
-        options={{
-          title: 'Symptom Checker',
-          tabBarIcon: ({ color }) => <FontAwesome5 name="stethoscope" size={24} color={color} />,
+          title: 'Home',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'home' : 'home-outline'} size={22} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="clinics"
         options={{
-          title: 'Find Clinic',
-          tabBarIcon: ({ color }) => <FontAwesome5 name="hospital" size={24} color={color} />,
+          title: 'Clinics',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'location' : 'location-outline'} size={24} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="messages"
         options={{
-          title: 'Messages',
-          tabBarIcon: ({ color }) => <FontAwesome5 name="envelope" size={24} color={color} />,
+          title: 'Chats',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'chatbubbles' : 'chatbubbles-outline'} size={22} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
-        name="chat/[id]"
+        name="profile"
         options={{
-          href: null, // Hides this from the bottom tab bar
-          title: 'Chat',
+          title: 'Profile',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'person' : 'person-outline'} size={22} color={color} />
+          ),
         }}
       />
-      <Tabs.Screen
-        name="book-appointment"
-        options={{ href: null, title: 'Book Appointment' }}
-      />
-      <Tabs.Screen
-        name="my-queue"
-        options={{ href: null, title: 'My Queue' }}
-      />
-      <Tabs.Screen
-        name="records"
-        options={{ href: null, title: 'Medical Records' }}
-      />
+      
+      {/* Hidden Screens */}
+      <Tabs.Screen name="symptom-checker" options={{ href: null }} />
+      <Tabs.Screen name="chat/[id]" options={{ href: null }} />
+      <Tabs.Screen name="book-appointment" options={{ href: null }} />
+      <Tabs.Screen name="my-queue" options={{ href: null }} />
+      <Tabs.Screen name="records" options={{ href: null }} />
     </Tabs>
   );
 }

@@ -62,7 +62,7 @@ const tools = [
 export const sendChatRequest = async (messages: Message[], userContext?: any): Promise<Message> => {
   try {
     const payload = {
-      model: "gemini-2.5-flash", 
+      model: "gemini-2.0-flash", 
       messages: [{ role: "system", content: getSystemPrompt(userContext) }, ...messages],
       tools: tools,
       tool_choice: "auto",

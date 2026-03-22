@@ -4,8 +4,8 @@ import {
   ActivityIndicator, Modal, ScrollView
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { FontAwesome5 } from '@expo/vector-icons';
-import { collection, query, where, onSnapshot, orderBy, updateDoc, doc } from 'firebase/firestore';
+import { Ionicons } from '@expo/vector-icons';
+import { collection, query, where, onSnapshot, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { Colors } from '../../constants/Colors';
 import { useRouter } from 'expo-router';
@@ -26,12 +26,12 @@ type Escalation = {
 };
 
 const SEVERITY_CONFIG = {
-  high:     { color: '#ef4444', bg: '#fef2f2', icon: 'exclamation-circle', label: 'HIGH RISK' },
-  medium:   { color: '#f59e0b', bg: '#fefce8', icon: 'exclamation-triangle', label: 'MEDIUM RISK' },
-  low:      { color: '#10b981', bg: '#f0fdf4', icon: 'info-circle', label: 'LOW RISK' },
-  critical: { color: '#7f1d1d', bg: '#fef2f2', icon: 'dizzy', label: 'CRITICAL' },
-  clinical: { color: '#991b1b', bg: '#fef2f2', icon: 'procedures', label: 'CLINICAL' },
-  moderate: { color: '#f59e0b', bg: '#fefce8', icon: 'exclamation-triangle', label: 'MODERATE' },
+  high:     { color: '#ef4444', bg: '#fef2f2', icon: 'alert-circle', label: 'HIGH RISK' },
+  medium:   { color: '#f59e0b', bg: '#fefce8', icon: 'warning', label: 'MEDIUM RISK' },
+  low:      { color: '#10b981', bg: '#f0fdf4', icon: 'information-circle', label: 'LOW RISK' },
+  critical: { color: '#7f1d1d', bg: '#fef2f2', icon: 'skull', label: 'CRITICAL' },
+  clinical: { color: '#991b1b', bg: '#fef2f2', icon: 'medical', label: 'CLINICAL' },
+  moderate: { color: '#f59e0b', bg: '#fefce8', icon: 'warning', label: 'MODERATE' },
 };
 
 const getSeverityCfg = (severity: string) => {
@@ -105,18 +105,18 @@ export default function Escalations() {
       <TouchableOpacity style={[styles.card, { borderLeftColor: cfg.color }]} onPress={() => setSelected(item)}>
         <View style={styles.cardTop}>
           <View style={[styles.severityBadge, { backgroundColor: cfg.bg }]}>
-            <FontAwesome5 name={cfg.icon} size={12} color={cfg.color} />
+            <Ionicons name={cfg.icon as any} size={14} color={cfg.color} />
             <Text style={[styles.severityText, { color: cfg.color }]}>{cfg.label}</Text>
           </View>
           <Text style={styles.timeText}>
-            {item.status === 'acknowledged' ? '✓ Acknowledged' : '● New'}
+            {item.status === 'acknowledged' ? '✓ Acknowledged' : '• New'}
           </Text>
         </View>
         <Text style={styles.patientName}>{item.patientName}</Text>
         <Text style={styles.summaryPreview} numberOfLines={2}>{item.summary}</Text>
         <View style={styles.cardFooter}>
-          <FontAwesome5 name="chevron-right" size={14} color="#94a3b8" />
-          <Text style={styles.viewText}>Tap to review</Text>
+          <Text style={styles.viewText}>Review Case</Text>
+          <Ionicons name="chevron-forward" size={16} color="#94a3b8" />
         </View>
       </TouchableOpacity>
     );
@@ -138,10 +138,12 @@ export default function Escalations() {
           renderItem={renderCard}
           contentContainerStyle={{ padding: 20 }}
           ListEmptyComponent={
-            <View style={{ alignItems: 'center', paddingTop: 80, gap: 12 }}>
-              <FontAwesome5 name="check-circle" size={56} color="#86efac" />
-              <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#334155' }}>All Clear!</Text>
-              <Text style={{ color: '#64748b' }}>No escalated cases at this time.</Text>
+            <View style={{ alignItems: 'center', paddingTop: 100, gap: 16 }}>
+              <View style={styles.emptyIconCircle}>
+                 <Ionicons name="checkmark-done" size={48} color="#10b981" />
+              </View>
+              <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#1f2937' }}>All Caught Up!</Text>
+              <Text style={{ color: '#6b7280', textAlign: 'center', paddingHorizontal: 40 }}>No escalated cases requiring immediate attention at this moment.</Text>
             </View>
           }
         />
@@ -152,16 +154,16 @@ export default function Escalations() {
         {selected && (
           <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
             <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => setSelected(null)}>
-                <FontAwesome5 name="times" size={22} color="#334155" />
+              <TouchableOpacity onPress={() => setSelected(null)} style={styles.closeBtn}>
+                <Ionicons name="close" size={24} color="#334155" />
               </TouchableOpacity>
-              <Text style={styles.modalTitle}>Case Details</Text>
-              <View style={{ width: 22 }} />
+              <Text style={styles.modalTitle}>Clinical Review</Text>
+              <View style={{ width: 44 }} />
             </View>
             <ScrollView contentContainerStyle={{ padding: 24, gap: 20 }}>
               <View style={[styles.severityBadge, { backgroundColor: getSeverityCfg(selected.severity).bg, alignSelf: 'flex-start' }]}>
-                <FontAwesome5 name={getSeverityCfg(selected.severity).icon} size={14} color={getSeverityCfg(selected.severity).color} />
-                <Text style={[styles.severityText, { color: getSeverityCfg(selected.severity).color, fontSize: 14 }]}>
+                <Ionicons name={getSeverityCfg(selected.severity).icon as any} size={16} color={getSeverityCfg(selected.severity).color} />
+                <Text style={[styles.severityText, { color: getSeverityCfg(selected.severity).color, fontSize: 13 }]}>
                   {getSeverityCfg(selected.severity).label}
                 </Text>
               </View>
@@ -194,23 +196,26 @@ export default function Escalations() {
               )}
               {selected.appointmentId && (
                 <TouchableOpacity
-                  style={{ backgroundColor: '#3b82f6', borderRadius: 16, padding: 18, alignItems: 'center' }}
+                  style={[styles.modalActionBtn, { backgroundColor: '#3b82f6' }]}
                   onPress={() => handleAcceptAppointment(selected)}
                 >
-                  <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>Accept Appointment & Join Chat</Text>
+                  <Ionicons name="chatbubble-outline" size={20} color="#fff" style={{ marginRight: 10 }} />
+                  <Text style={styles.modalActionText}>Join Consultation Room</Text>
                 </TouchableOpacity>
               )}
               <TouchableOpacity
-                style={{ backgroundColor: Colors.light.secondary, borderRadius: 16, padding: 18, alignItems: 'center' }}
+                style={[styles.modalActionBtn, { backgroundColor: Colors.light.secondary }]}
                 onPress={() => acknowledge(selected)}
               >
-                <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>Acknowledge Case</Text>
+                <Ionicons name="checkmark-circle-outline" size={20} color="#fff" style={{ marginRight: 10 }} />
+                <Text style={styles.modalActionText}>Acknowledge Case</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={{ backgroundColor: '#10b981', borderRadius: 16, padding: 18, alignItems: 'center' }}
+                style={[styles.modalActionBtn, { backgroundColor: '#10b981' }]}
                 onPress={() => resolve(selected)}
               >
-                <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>Mark as Resolved</Text>
+                <Ionicons name="flag-outline" size={20} color="#fff" style={{ marginRight: 10 }} />
+                <Text style={styles.modalActionText}>Mark as Resolved</Text>
               </TouchableOpacity>
             </ScrollView>
           </SafeAreaView>
@@ -224,25 +229,29 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8fafc' },
   header: { padding: 20, backgroundColor: Colors.light.secondary, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
   title: { fontSize: 22, fontWeight: 'bold', color: '#fff' },
-  subtitle: { fontSize: 14, color: '#ccfbf1', marginTop: 4 },
+  subtitle: { fontSize: 14, color: '#ccfbf1', marginTop: 4, fontWeight: '500' },
   card: {
-    backgroundColor: '#fff', borderRadius: 16, padding: 18, marginBottom: 14,
-    borderLeftWidth: 5, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 10, elevation: 3,
+    backgroundColor: '#fff', borderRadius: 18, padding: 20, marginBottom: 16,
+    borderLeftWidth: 6, shadowColor: '#0f172a', shadowOpacity: 0.08, shadowRadius: 12, elevation: 4,
   },
-  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  severityBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
-  severityText: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
-  timeText: { fontSize: 12, color: '#94a3b8' },
-  patientName: { fontSize: 18, fontWeight: 'bold', color: '#0f172a', marginBottom: 6 },
-  summaryPreview: { fontSize: 14, color: '#64748b', lineHeight: 20 },
-  cardFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginTop: 12, gap: 4 },
-  viewText: { fontSize: 13, color: '#94a3b8' },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
-  modalTitle: { fontSize: 18, fontWeight: 'bold', color: '#0f172a' },
-  msgBubble: { padding: 10, borderRadius: 12, marginBottom: 8, maxWidth: '90%' },
-  userBubble: { backgroundColor: Colors.light.primary + '15', alignSelf: 'flex-end', borderBottomRightRadius: 2 },
-  aiBubble: { backgroundColor: '#f1f5f9', alignSelf: 'flex-start', borderBottomLeftRadius: 2 },
-  msgText: { fontSize: 14, lineHeight: 20 },
-  userText: { color: Colors.light.primary, fontWeight: '500' },
-  aiText: { color: '#475569' },
+  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  severityBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14 },
+  severityText: { fontSize: 10, fontWeight: '900', letterSpacing: 0.8 },
+  timeText: { fontSize: 12, color: '#94a3b8', fontWeight: '600' },
+  patientName: { fontSize: 19, fontWeight: '800', color: '#0f172a', marginBottom: 8 },
+  summaryPreview: { fontSize: 14, color: '#475569', lineHeight: 22, fontWeight: '400' },
+  cardFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginTop: 16, gap: 4 },
+  viewText: { fontSize: 13, color: Colors.light.secondary, fontWeight: '700' },
+  emptyIconCircle: { width: 100, height: 100, borderRadius: 50, backgroundColor: '#f0fdf4', justifyContent: 'center', alignItems: 'center' },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: '#f1f5f9', backgroundColor: '#fff' },
+  closeBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#f8fafc', justifyContent: 'center', alignItems: 'center' },
+  modalTitle: { fontSize: 20, fontWeight: '800', color: '#0f172a' },
+  modalActionBtn: { flexDirection: 'row', borderRadius: 18, paddingVertical: 18, paddingHorizontal: 20, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+  modalActionText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  msgBubble: { padding: 14, borderRadius: 18, marginBottom: 10, maxWidth: '85%' },
+  userBubble: { backgroundColor: Colors.light.primary + '10', alignSelf: 'flex-end', borderBottomRightRadius: 4 },
+  aiBubble: { backgroundColor: '#f8fafc', alignSelf: 'flex-start', borderBottomLeftRadius: 4, borderWidth: 1, borderColor: '#f1f5f9' },
+  msgText: { fontSize: 14, lineHeight: 22 },
+  userText: { color: Colors.light.primary, fontWeight: '600' },
+  aiText: { color: '#334155' },
 });

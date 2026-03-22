@@ -16,9 +16,13 @@ import { getActiveAppointmentSession, resolveConsultation, getPatientMedicalReco
 import { getMedicationsList, prescribeMedications } from '../../services/inventoryService';
 import { getPatientInsights, generatePatientInsights } from '../../services/patientService';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 
 export default function ChatInterface({ isDoctorView }: { isDoctorView: boolean }) {
-  const { id, name } = useLocalSearchParams(); 
+  const params = useLocalSearchParams(); 
+  const id = Array.isArray(params.id) ? params.id[0] : params.id;
+  const name = Array.isArray(params.name) ? params.name[0] : params.name;
   const { user } = useAuth();
   const router = useRouter();
   
@@ -66,6 +70,10 @@ export default function ChatInterface({ isDoctorView }: { isDoctorView: boolean 
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [transcription, setTranscription] = useState<string>('');
 
+  // AI Diagnosis states
+  const [isDiagnosing, setIsDiagnosing] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
   const chatId = user?.uid && id ? [user.uid, id].sort().join('_') : null;
 
   useEffect(() => {
@@ -94,11 +102,13 @@ export default function ChatInterface({ isDoctorView }: { isDoctorView: boolean 
         return {
           id: doc.id,
           text: data.text,
+          image: data.image,
           sender: data.senderId === user?.uid ? 'me' : 'other',
+          senderId: data.senderId,
           time: formattedTime
-        } as Message;
+        };
       });
-      setMessages(liveMessages);
+      setMessages(liveMessages as any);
       setIsLoading(false);
     });
     return () => unsubscribe();
@@ -114,6 +124,92 @@ export default function ChatInterface({ isDoctorView }: { isDoctorView: boolean 
     return () => clearInterval(interval);
   }, [isCalling]);
 
+  const handleImagePick = async () => {
+    if (!sessionActive) return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.7,
+      base64: true,
+    });
+
+    if (!result.canceled && result.assets[0].base64) {
+      setSelectedImage(result.assets[0].uri);
+      if (isDoctorView) {
+        Alert.alert(
+          "Clinical AI Diagnosis",
+          "Would you like the AI to analyze this image for diagnostic assistance?",
+          [
+            { text: "Just Send", onPress: () => sendImageMessage(result.assets[0].uri) },
+            { text: "Analyze & Send", onPress: () => runAiDiagnosis(result.assets[0].base64!) }
+          ]
+        );
+      } else {
+        sendImageMessage(result.assets[0].uri);
+      }
+    }
+  };
+
+  const sendImageMessage = async (uri: string) => {
+    if (!chatId || !user) return;
+    try {
+      await addDoc(collection(db, 'chats', chatId, 'messages'), {
+        text: "[Image Attached]",
+        image: uri,
+        senderId: user.uid,
+        createdAt: serverTimestamp()
+      });
+    } catch (e) { console.error(e); }
+  };
+
+  const runAiDiagnosis = async (base64: string) => {
+    setIsDiagnosing(true);
+    try {
+      const prompt = `Analyze this clinical image with professional expertise.
+Provide your response in the following structured format:
+1. **Visual Observations**: Detailed description of what is seen.
+2. **Clinical Interpretation**: Likely condition or differential diagnoses.
+3. **Severity Assessment**: Categorize as Routine, Urgent, or Emergency.
+4. **Immediate Recommendation**: Clear, actionable next steps for the patient/doctor.
+
+KEEP IT CONCISE, CLINICAL, AND ACTION-ORIENTED.`;
+      const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
+      
+      const payload = {
+        model: "gemini-2.0-flash",
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: prompt },
+              { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64}` } }
+            ]
+          }
+        ]
+      };
+
+      const res = await fetch('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GEMINI_API_KEY}` },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      const analysis = data.choices?.[0]?.message?.content || "AI could not process the image.";
+
+      await addDoc(collection(db, 'chats', chatId!, 'messages'), {
+        text: `🔍 AI DIAGNOSIS ASSISTANCE\n\n${analysis}`,
+        senderId: 'system_ai',
+        createdAt: serverTimestamp()
+      });
+    } catch (e) {
+      console.error(e);
+      Alert.alert("Error", "AI Diagnosis failed.");
+    } finally {
+      setIsDiagnosing(false);
+      setSelectedImage(null);
+    }
+  };
   const handleSend = async () => {
     if (!input.trim() || !chatId || !user || !sessionActive) return;
     const msgText = input.trim();
@@ -130,10 +226,8 @@ export default function ChatInterface({ isDoctorView }: { isDoctorView: boolean 
   };
 
   const loadMedications = async () => {
-    console.log("Loading medications...");
     try {
       const list = await getMedicationsList();
-      console.log(`Loaded ${list.length} medications.`);
       setMedications(list);
     } catch (e) {
       console.error("Error loading meds", e);
@@ -152,17 +246,13 @@ export default function ChatInterface({ isDoctorView }: { isDoctorView: boolean 
       instructions: medDetails[mid]?.instructions || 'As directed'
     }));
 
-    if (prescribedItems.some(i => isNaN(i.quantity) || i.quantity <= 0)) {
-      alert("Please enter valid quantities for all medications.");
-      return;
-    }
-
     setIsPrescribing(true);
     try {
       const patientId = isDoctorView ? (id as string) : user.uid;
       const results = await prescribeMedications(
         prescribedItems, 
         patientId, 
+        name || 'Patient',
         user.uid, 
         user.name || user.displayName || 'Doctor',
         diagnosis
@@ -199,14 +289,62 @@ export default function ChatInterface({ isDoctorView }: { isDoctorView: boolean 
         { text: "Cancel", style: "cancel" },
         { text: "End", style: "destructive", onPress: async () => {
           try {
-            await resolveConsultation(activeAppointmentId);
+            const patientId = isDoctorView ? (id as string) : user?.uid;
+            const doctorId = isDoctorView ? user?.uid : (id as string);
+            
+            await resolveConsultation(activeAppointmentId, patientId!, doctorId!);
+            setSessionActive(false);
+            
+            // Generate Consultation Summary
+            await generateConsultationAiSummary();
+            
             router.back();
           } catch (e) {
             console.error(e);
+            Alert.alert("Error", "Could not close consultation.");
           }
         }}
       ]
     );
+  };
+
+  const generateConsultationAiSummary = async () => {
+    if (!chatId) return;
+    try {
+      const chatHistory = messages.slice(-10).map(m => `${m.sender === 'me' ? 'Sender' : 'Receiver'}: ${m.text}`).join('\n');
+      const clinicalTranscript = transcription ? `[TRANSCRIPT]:\n${transcription}` : '';
+      
+      const prompt = `As a clinical assistant, summarize this doctor-patient consultation.
+Create a structured feedback for the patient including:
+1. **Meeting Summary**: What was discussed?
+2. **Doctor's Advice**: Specific instructions given.
+3. **Prescriptions/Next Steps**: What the patient needs to do now.
+4. **Follow-up**: When is the next checkup?
+
+KEEP IT PATIENT-FRIENDLY BUT CLINICALLY ACCURATE.
+${chatHistory}
+${clinicalTranscript}`;
+
+      const res = await fetch('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.EXPO_PUBLIC_GEMINI_API_KEY}` },
+        body: JSON.stringify({
+          model: "gemini-2.0-flash",
+          messages: [{ role: "user", content: prompt }]
+        }),
+      });
+
+      const data = await res.json();
+      const aiSummary = data.choices?.[0]?.message?.content || "AI could not generate a summary.";
+
+      await addDoc(collection(db, 'chats', chatId, 'messages'), {
+        text: `📝 CONSULTATION FEEDBACK SUMMARY\n\n${aiSummary}`,
+        senderId: 'system_ai',
+        createdAt: serverTimestamp()
+      });
+    } catch (e) {
+      console.error("AI Summary error:", e);
+    }
   };
 
   const loadPatientHistory = async () => {
@@ -385,8 +523,16 @@ export default function ChatInterface({ isDoctorView }: { isDoctorView: boolean 
             data={messages}
             keyExtractor={item => item.id}
             contentContainerStyle={{ padding: 16 }}
-            renderItem={({ item }) => (
+            renderItem={({ item }: { item: any }) => (
                 <View style={[styles.bubble, item.sender === 'me' ? [styles.myBubble, { backgroundColor: themeColor }] : styles.otherBubble]}>
+                {item.image && (
+                  <TouchableOpacity onPress={() => {/* Show full image */}}>
+                    <View style={styles.imageWrapper}>
+                       <FontAwesome5 name="image" size={24} color={item.sender === 'me' ? '#fff' : '#64748b'} style={styles.imagePlaceholder} />
+                       <Text style={[styles.imageText, item.sender === 'me' ? styles.myText : styles.otherText]}>Patient Attachment</Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
                 <Text style={[styles.bubbleText, item.sender === 'me' ? styles.myText : styles.otherText]}>
                     {item.text}
                 </Text>
@@ -412,8 +558,16 @@ export default function ChatInterface({ isDoctorView }: { isDoctorView: boolean 
         
         {/* Input Bar */}
         <View style={[styles.inputContainer, !sessionActive && { opacity: 0.5 }]}>
-          <TouchableOpacity style={styles.attachBtn} disabled={!sessionActive}>
-            <FontAwesome5 name="paperclip" size={20} color="#94a3b8" />
+          <TouchableOpacity 
+            style={styles.attachBtn} 
+            disabled={!sessionActive || isDiagnosing}
+            onPress={handleImagePick}
+          >
+            {isDiagnosing ? (
+              <ActivityIndicator size="small" color={themeColor} />
+            ) : (
+              <FontAwesome5 name="camera" size={20} color={themeColor} />
+            )}
           </TouchableOpacity>
           <TextInput
             style={styles.textInput}
@@ -772,4 +926,18 @@ const styles = StyleSheet.create({
   transcriptionTitle: { fontSize: 11, fontWeight: 'bold', color: '#ef4444', textTransform: 'uppercase' },
   transcriptionScroll: { flex: 1 },
   transcriptionText: { fontSize: 13, color: '#450a0a', fontStyle: 'italic', lineHeight: 18 },
+  // Image Styles
+  imageWrapper: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: 'rgba(0,0,0,0.05)', 
+    padding: 12, 
+    borderRadius: 12, 
+    marginBottom: 8,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.1)'
+  },
+  imagePlaceholder: { },
+  imageText: { fontSize: 13, fontWeight: '600' },
 });

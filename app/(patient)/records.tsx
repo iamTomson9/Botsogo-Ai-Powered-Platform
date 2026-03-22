@@ -1,96 +1,140 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  ActivityIndicator, ScrollView
+  ActivityIndicator, ScrollView, Dimensions
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { FontAwesome5 } from '@expo/vector-icons';
+import { FontAwesome5, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
 import { getPatientMedicalRecords } from '../../services/appointmentService';
+import { getPatientInsights } from '../../services/patientService';
 import { Colors } from '../../constants/Colors';
 import { useRouter } from 'expo-router';
+
+const { width } = Dimensions.get('window');
 
 export default function MedicalRecords() {
   const { user } = useAuth();
   const router = useRouter();
   const [records, setRecords] = useState<any[]>([]);
+  const [insights, setInsights] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user?.uid) return;
-    const fetchRecords = async () => {
+    const fetchData = async () => {
       setLoading(true);
-      console.log(`Fetching records for patient: ${user.uid}`);
       try {
-        const data = await getPatientMedicalRecords(user.uid);
-        console.log(`Found ${data.length} records.`);
-        setRecords(data);
+        const [recordsData, insightsData] = await Promise.all([
+          getPatientMedicalRecords(user.uid),
+          getPatientInsights(user.uid)
+        ]);
+        setRecords(recordsData);
+        setInsights(insightsData);
       } catch (e) {
-        console.error("Error fetching patient records:", e);
+        console.error("Error fetching data:", e);
       } finally {
         setLoading(false);
       }
     };
-    fetchRecords();
+    fetchData();
   }, [user]);
+
+  const Header = () => (
+    <View style={styles.headerContainer}>
+      <View style={styles.headerTop}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
+          <Ionicons name="arrow-back" size={24} color="#0f172a" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Medical Passport</Text>
+        <TouchableOpacity style={styles.iconBtn}>
+          <Ionicons name="share-outline" size={24} color="#0f172a" />
+        </TouchableOpacity>
+      </View>
+
+      {insights && (
+        <View style={styles.insightsCard}>
+          <View style={styles.insightsHeader}>
+            <View style={styles.aiBadge}>
+              <MaterialCommunityIcons name="robot" size={14} color="#fff" />
+              <Text style={styles.aiBadgeText}>AI INSIGHTS</Text>
+            </View>
+            <Text style={styles.insightsDate}>
+              Last updated: {insights.updatedAt?.toDate().toLocaleDateString() || 'Today'}
+            </Text>
+          </View>
+          <Text style={styles.summaryTitle}>Health Summary</Text>
+          <Text style={styles.summaryText} numberOfLines={4}>
+            {insights.summary}
+          </Text>
+          <TouchableOpacity style={styles.viewTimelineBtn} onPress={() => router.push('/(patient)/profile' as any)}>
+            <Text style={styles.viewTimelineText}>View Detailed Profile</Text>
+            <Ionicons name="chevron-forward" size={16} color={Colors.light.primary} />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      <View style={styles.tabContainer}>
+        <View style={[styles.tab, styles.activeTab]}>
+          <Text style={styles.activeTabText}>Timeline</Text>
+        </View>
+        <View style={styles.tab}>
+          <Text style={styles.tabText}>Prescriptions</Text>
+        </View>
+        <View style={styles.tab}>
+          <Text style={styles.tabText}>Reports</Text>
+        </View>
+      </View>
+    </View>
+  );
 
   const RecordItem = ({ record }: { record: any }) => {
     const date = record.createdAt ? record.createdAt.toDate().toLocaleDateString() : 'Recent';
+    const isPrescription = record.type === 'prescription';
     
     return (
-      <View style={styles.recordCard}>
-        <View style={styles.cardHeader}>
-          <View style={styles.typeIcon}>
-            <FontAwesome5 
-              name={record.type === 'prescription' ? "pills" : "file-medical-alt"} 
-              size={18} 
-              color={Colors.light.primary} 
-            />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.recordType}>{record.type.toUpperCase()}</Text>
-            <Text style={styles.recordDate}>{date}</Text>
-          </View>
-          <Text style={styles.doctorName}>Dr. {record.doctorName}</Text>
+      <View style={styles.timelineItem}>
+        <View style={styles.timelineLineContainer}>
+          <View style={[styles.timelineDot, { backgroundColor: isPrescription ? '#f59e0b' : Colors.light.primary }]} />
+          <View style={styles.timelineLine} />
         </View>
+        
+        <TouchableOpacity style={styles.recordCard}>
+          <View style={styles.cardHeader}>
+            <View style={[styles.typeIcon, { backgroundColor: (isPrescription ? '#f59e0b' : Colors.light.primary) + '15' }]}>
+              <FontAwesome5 
+                name={isPrescription ? "pills" : "file-medical-alt"} 
+                size={16} 
+                color={isPrescription ? '#f59e0b' : Colors.light.primary} 
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.recordType}>{record.type.toUpperCase()}</Text>
+              <Text style={styles.recordDate}>{date}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#cbd5e1" />
+          </View>
 
-        <View style={styles.cardBody}>
-          <Text style={styles.diagnosisLabel}>DIAGNOSIS</Text>
-          <Text style={styles.diagnosisText}>{record.diagnosis}</Text>
+          <View style={styles.cardBody}>
+            <Text style={styles.diagnosisText}>{record.diagnosis}</Text>
+            <Text style={styles.doctorName}>with Dr. {record.doctorName}</Text>
 
-          {record.details?.medications && (
-            <View style={styles.medicationList}>
-              <Text style={styles.medLabel}>PRESCRIBED:</Text>
-              {record.details.medications.map((med: any, i: number) => {
-                const isObject = typeof med === 'object';
-                const name = isObject ? med.name : med;
-                const dosage = isObject ? med.dosage : '';
-                const instr = isObject ? med.instructions : '';
-
-                return (
-                  <View key={i} style={{ marginBottom: 8 }}>
-                    <View style={styles.medItem}>
-                      <FontAwesome5 name="check" size={10} color="#10b981" />
-                      <Text style={styles.medText}>{name} {dosage ? `(${dosage})` : ''}</Text>
-                    </View>
-                    {instr ? (
-                      <Text style={styles.medInstruction}>" {instr} "</Text>
-                    ) : null}
+            {isPrescription && record.details?.medications && (
+              <View style={styles.medicationChipContainer}>
+                {record.details.medications.slice(0, 2).map((med: any, i: number) => (
+                  <View key={i} style={styles.medChip}>
+                    <Text style={styles.medChipText} numberOfLines={1}>
+                      {typeof med === 'object' ? med.name : med}
+                    </Text>
                   </View>
-                );
-              })}
-            </View>
-          )}
-
-          {record.type === 'consultation' && record.details?.summary && (
-            <View style={{ marginTop: 8 }}>
-              <Text style={styles.diagnosisLabel}>ASSESSMENT SUMMARY</Text>
-              <Text style={{ fontSize: 14, color: '#475569', marginTop: 4, lineHeight: 20 }}>
-                {record.details.summary}
-              </Text>
-            </View>
-          )}
-        </View>
+                ))}
+                {record.details.medications.length > 2 && (
+                  <Text style={styles.moreMeds}>+{record.details.medications.length - 2} more</Text>
+                )}
+              </View>
+            )}
+          </View>
+        </TouchableOpacity>
       </View>
     );
   };
@@ -105,21 +149,16 @@ export default function MedicalRecords() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <FontAwesome5 name="arrow-left" size={20} color="#fff" />
-        </TouchableOpacity>
-        <Text style={styles.title}>Medical Records</Text>
-      </View>
-
       <FlatList
         data={records}
         keyExtractor={item => item.id}
+        ListHeaderComponent={Header}
         contentContainerStyle={styles.listContent}
         renderItem={({ item }) => <RecordItem record={item} />}
+        showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <FontAwesome5 name="folder-open" size={48} color="#cbd5e1" />
+            <Ionicons name="folder-open-outline" size={64} color="#cbd5e1" />
             <Text style={styles.emptyText}>No medical records found yet.</Text>
           </View>
         }
@@ -130,39 +169,42 @@ export default function MedicalRecords() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8fafc' },
-  header: { 
-    padding: 24, 
-    backgroundColor: Colors.light.primary, 
-    borderBottomLeftRadius: 24, 
-    borderBottomRightRadius: 24,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16
-  },
-  backBtn: { padding: 4 },
-  title: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
-  listContent: { padding: 20, gap: 16 },
-  recordCard: { 
-    backgroundColor: '#fff', 
-    borderRadius: 20, 
-    padding: 20,
-    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, elevation: 2,
-    borderWidth: 1, borderColor: '#e2e8f0'
-  },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-  typeIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: Colors.light.primary + '15', justifyContent: 'center', alignItems: 'center' },
-  recordType: { fontSize: 11, fontWeight: '800', color: Colors.light.primary, letterSpacing: 1 },
-  recordDate: { fontSize: 13, color: '#94a3b8', marginTop: 2 },
-  doctorName: { fontSize: 13, fontWeight: '700', color: '#64748b' },
-  cardBody: { gap: 12 },
-  diagnosisLabel: { fontSize: 10, fontWeight: '800', color: '#94a3b8', letterSpacing: 0.5 },
-  diagnosisText: { fontSize: 16, fontWeight: '600', color: '#1e293b' },
-  medicationList: { backgroundColor: '#f0fdf4', padding: 12, borderRadius: 12, marginTop: 4 },
-  medLabel: { fontSize: 10, fontWeight: '800', color: '#10b981', marginBottom: 8 },
-  medItem: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-  medText: { fontSize: 14, color: '#334155', fontWeight: '500' },
-  medInstruction: { fontSize: 12, color: '#64748b', marginLeft: 18, fontStyle: 'italic', marginTop: 2 },
+  headerContainer: { padding: 20 },
+  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
+  iconBtn: { padding: 8, backgroundColor: '#fff', borderRadius: 12, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5, elevation: 1 },
+  headerTitle: { fontSize: 20, fontWeight: '800', color: '#0f172a' },
+  insightsCard: { backgroundColor: '#0f172a', borderRadius: 24, padding: 20, marginBottom: 24 },
+  insightsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  aiBadge: { backgroundColor: Colors.light.primary, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, gap: 4 },
+  aiBadgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
+  insightsDate: { color: '#64748b', fontSize: 11 },
+  summaryTitle: { color: '#fff', fontSize: 18, fontWeight: '700', marginBottom: 8 },
+  summaryText: { color: '#94a3b8', fontSize: 14, lineHeight: 22, marginBottom: 16 },
+  viewTimelineBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  viewTimelineText: { color: Colors.light.primary, fontWeight: '600', fontSize: 14 },
+  tabContainer: { flexDirection: 'row', gap: 12 },
+  tab: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12, backgroundColor: '#fff', borderWidth: 1, borderColor: '#f1f5f9' },
+  activeTab: { backgroundColor: '#0f172a', borderColor: '#0f172a' },
+  tabText: { fontSize: 14, fontWeight: '600', color: '#64748b' },
+  activeTabText: { color: '#fff' },
+  listContent: { paddingBottom: 40 },
+  timelineItem: { flexDirection: 'row', paddingHorizontal: 20 },
+  timelineLineContainer: { width: 24, alignItems: 'center' },
+  timelineLine: { width: 2, flex: 1, backgroundColor: '#e2e8f0' },
+  timelineDot: { width: 12, height: 12, borderRadius: 6, marginTop: 24, zIndex: 1, borderWidth: 2, borderColor: '#fff' },
+  recordCard: { flex: 1, backgroundColor: '#fff', borderRadius: 20, padding: 16, marginBottom: 16, marginLeft: 12, shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 8, elevation: 1, borderWidth: 1, borderColor: '#f1f5f9' },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
+  typeIcon: { width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  recordType: { fontSize: 10, fontWeight: '800', color: '#94a3b8', letterSpacing: 0.5 },
+  recordDate: { fontSize: 12, color: '#64748b' },
+  cardBody: { paddingLeft: 46 },
+  diagnosisText: { fontSize: 15, fontWeight: '700', color: '#1e293b', marginBottom: 2 },
+  doctorName: { fontSize: 13, color: '#64748b', marginBottom: 12 },
+  medicationChipContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  medChip: { backgroundColor: '#f0fdf4', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  medChipText: { fontSize: 12, color: '#166534', fontWeight: '600' },
+  moreMeds: { fontSize: 12, color: '#64748b', alignSelf: 'center' },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  emptyContainer: { alignItems: 'center', marginTop: 100, gap: 16 },
+  emptyContainer: { alignItems: 'center', marginTop: 60, gap: 16 },
   emptyText: { color: '#94a3b8', fontSize: 16 },
 });

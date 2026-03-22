@@ -1,4 +1,4 @@
-import { FontAwesome5 } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import { getAuth, signOut } from "firebase/auth";
 import { Alert, TouchableOpacity } from "react-native";
@@ -19,10 +19,12 @@ export default function DoctorLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors.light.secondary, // Uses a slightly different teal
+        tabBarActiveTintColor: Colors.light.secondary,
         tabBarStyle: {
           backgroundColor: Colors.light.surface,
           borderTopColor: "#e2e8f0",
+          height: 60,
+          paddingBottom: 8,
         },
         headerStyle: {
           backgroundColor: Colors.light.secondary,
@@ -30,27 +32,26 @@ export default function DoctorLayout() {
         headerTintColor: "#fff",
         headerRight: () => (
           <TouchableOpacity onPress={handleLogout} style={{ marginRight: 20 }}>
-            <FontAwesome5 name="sign-out-alt" size={20} color="#fff" />
+            <Ionicons name="log-out-outline" size={24} color="#fff" />
           </TouchableOpacity>
         ),
       }}
     >
-      3
       <Tabs.Screen
         name="index"
         options={{
-          title: "Doctor Portal",
-          tabBarIcon: ({ color }) => (
-            <FontAwesome5 name="user-md" size={24} color={color} />
+          title: "Portal",
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? "grid" : "grid-outline"} size={22} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="queue"
+        name="escalations"
         options={{
-          title: "Patient Queue",
-          tabBarIcon: ({ color }) => (
-            <FontAwesome5 name="clipboard-list" size={24} color={color} />
+          title: "Escalated",
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? "alert-circle" : "alert-circle-outline"} size={24} color={color} />
           ),
         }}
       />
@@ -58,54 +59,24 @@ export default function DoctorLayout() {
         name="messages"
         options={{
           title: "Messages",
-          tabBarIcon: ({ color }) => (
-            <FontAwesome5 name="envelope" size={22} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="diagnostics"
-        options={{
-          title: "Diagnostics",
-          tabBarIcon: ({ color }) => (
-            <FontAwesome5 name="x-ray" size={22} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="escalations"
-        options={{
-          title: "Escalations",
-          tabBarIcon: ({ color }) => (
-            <FontAwesome5 name="exclamation-circle" size={22} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? "chatbubble-ellipses" : "chatbubble-ellipses-outline"} size={22} color={color} />
           ),
         }}
       />
       <Tabs.Screen
         name="medications"
         options={{
-          title: "Medications",
-          tabBarIcon: ({ color }) => (
-            <FontAwesome5 name="pills" size={22} color={color} />
+          title: "Meds",
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? "medical" : "medical-outline"} size={22} color={color} />
           ),
         }}
       />
-      <Tabs.Screen
-        name="transcription"
-        options={{
-          title: "Transcribe",
-          tabBarIcon: ({ color }) => (
-            <FontAwesome5 name="microphone" size={22} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="chat/[id]"
-        options={{
-          href: null,
-          title: "Chat",
-        }}
-      />
+      <Tabs.Screen name="queue" options={{ href: null }} />
+      <Tabs.Screen name="diagnostics" options={{ href: null }} />
+      <Tabs.Screen name="transcription" options={{ href: null }} />
+      <Tabs.Screen name="chat/[id]" options={{ href: null }} />
     </Tabs>
   );
 }

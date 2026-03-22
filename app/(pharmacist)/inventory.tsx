@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { FontAwesome5 } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { collection, onSnapshot, query, updateDoc, doc, increment } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { seedInventory, Medication } from '../../services/inventoryService';
@@ -75,20 +75,19 @@ export default function InventoryScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.title}>Drug Inventory</Text>
-          <Text style={styles.subtitle}>{inventory.length} drugs · {lowCount} low stock alerts</Text>
+          <Text style={styles.title}>Clinical Inventory</Text>
+          <Text style={styles.subtitle}>{inventory.length} active medications · {lowCount} alerts</Text>
         </View>
         <TouchableOpacity onPress={handleSeed} style={styles.seedBtn}>
-          <FontAwesome5 name="sync" size={14} color="#fff" />
-          <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}> Seed</Text>
+          <Ionicons name="cloud-download-outline" size={18} color="#fff" />
         </TouchableOpacity>
       </View>
 
       <View style={styles.searchRow}>
-        <FontAwesome5 name="search" size={14} color="#94a3b8" />
+        <Ionicons name="search-outline" size={18} color="#94a3b8" />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search drug or category..."
+          placeholder="Search clinical stock..."
           value={search}
           onChangeText={setSearch}
           placeholderTextColor="#94a3b8"
@@ -106,25 +105,27 @@ export default function InventoryScreen() {
               <View style={{ flex: 1 }}>
                 <View style={styles.cardTop}>
                   <Text style={styles.drugName}>{item.name}</Text>
-                  <View style={[styles.stockTag, { backgroundColor: color + '20' }]}>
+                  <View style={[styles.stockTag, { backgroundColor: color + '15' }]}>
                     <Text style={[styles.stockTagText, { color }]}>{label}</Text>
                   </View>
                 </View>
-                <Text style={styles.categoryText}>{item.category}</Text>
+                <Text style={styles.categoryText}>{item.category.toUpperCase()}</Text>
                 <View style={styles.stockRow}>
                   <Text style={[styles.stockCount, { color }]}>{item.stock}</Text>
                   <Text style={styles.stockUnit}> {item.unit}</Text>
-                  <Text style={styles.minText}>  (min: {item.minStock})</Text>
+                  <View style={styles.minBadge}>
+                    <Text style={styles.minText}>MIN: {item.minStock}</Text>
+                  </View>
                 </View>
               </View>
 
               {/* Adjust Buttons */}
               <View style={styles.adjustRow}>
                 <TouchableOpacity style={styles.adjBtn} onPress={() => adjust(item.id, -1)}>
-                  <FontAwesome5 name="minus" size={12} color={TEAL} />
+                  <Ionicons name="remove" size={18} color={TEAL} />
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.adjBtn, styles.adjBtnPlus]} onPress={() => adjust(item.id, 10)}>
-                  <FontAwesome5 name="plus" size={12} color="#fff" />
+                  <Ionicons name="add" size={18} color="#fff" />
                 </TouchableOpacity>
               </View>
             </View>
@@ -132,8 +133,8 @@ export default function InventoryScreen() {
         }}
         ListEmptyComponent={
           <View style={{ alignItems: 'center', paddingTop: 60 }}>
-            <FontAwesome5 name="boxes" size={48} color="#cbd5e1" />
-            <Text style={{ marginTop: 16, color: '#64748b', fontSize: 16 }}>No items found</Text>
+            <Ionicons name="cube-outline" size={64} color="#cbd5e1" />
+            <Text style={{ marginTop: 16, color: '#64748b', fontSize: 16, fontWeight: '600' }}>No inventory items found</Text>
           </View>
         }
       />
@@ -161,25 +162,26 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff', borderRadius: 14, paddingHorizontal: 16, paddingVertical: 12,
     shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
   },
-  searchInput: { flex: 1, fontSize: 15, color: '#0f172a' },
+  searchInput: { flex: 1, fontSize: 16, color: '#0f172a', fontWeight: '500' },
   card: {
-    backgroundColor: '#fff', borderRadius: 16, padding: 16,
+    backgroundColor: '#fff', borderRadius: 24, padding: 20,
     flexDirection: 'row', alignItems: 'center',
-    shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 12, elevation: 3,
   },
-  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  drugName: { fontSize: 15, fontWeight: 'bold', color: '#0f172a', flex: 1, paddingRight: 8 },
-  categoryText: { fontSize: 12, color: '#64748b', marginBottom: 6 },
-  stockRow: { flexDirection: 'row', alignItems: 'baseline' },
-  stockCount: { fontSize: 22, fontWeight: 'bold' },
-  stockUnit: { fontSize: 13, color: '#64748b' },
-  minText: { fontSize: 12, color: '#94a3b8' },
-  stockTag: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
-  stockTagText: { fontSize: 10, fontWeight: '800' },
-  adjustRow: { gap: 8 },
+  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  drugName: { fontSize: 17, fontWeight: '800', color: '#0f172a', flex: 1, paddingRight: 8 },
+  categoryText: { fontSize: 11, color: '#94a3b8', marginBottom: 10, fontWeight: '700', letterSpacing: 0.5 },
+  stockRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  stockCount: { fontSize: 28, fontWeight: '800' },
+  stockUnit: { fontSize: 14, color: '#64748b', fontWeight: '500' },
+  minBadge: { backgroundColor: '#f1f5f9', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, marginLeft: 8 },
+  minText: { fontSize: 10, color: '#94a3b8', fontWeight: '700' },
+  stockTag: { borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 },
+  stockTagText: { fontSize: 10, fontWeight: '900', letterSpacing: 0.3 },
+  adjustRow: { gap: 10 },
   adjBtn: {
-    width: 36, height: 36, borderRadius: 10,
-    borderWidth: 1.5, borderColor: TEAL,
+    width: 40, height: 40, borderRadius: 12,
+    borderWidth: 2, borderColor: '#e2e8f0',
     justifyContent: 'center', alignItems: 'center',
   },
   adjBtnPlus: { backgroundColor: TEAL, borderColor: TEAL },

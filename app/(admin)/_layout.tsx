@@ -1,14 +1,14 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { LayoutDashboard, Users, Settings } from 'lucide-react-native';
-import { FontAwesome5 } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '../../constants/Colors';
 
 export default function AdminLayout() {
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#5BAFB8',
+        tabBarActiveTintColor: Colors.light.primary,
         tabBarInactiveTintColor: '#828282',
         tabBarStyle: {
           backgroundColor: '#FFFFFF',
@@ -24,28 +24,28 @@ export default function AdminLayout() {
         name="index"
         options={{
           title: 'Dashboard',
-          tabBarIcon: ({ color }) => <LayoutDashboard size={24} color={color} />,
+          tabBarIcon: ({ color }) => <Ionicons name="grid-outline" size={24} color={color} />,
         }}
       />
       <Tabs.Screen
         name="users"
         options={{
           title: 'Users',
-          tabBarIcon: ({ color }) => <Users size={24} color={color} />,
+          tabBarIcon: ({ color }) => <Ionicons name="people-outline" size={24} color={color} />,
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',
-          tabBarIcon: ({ color }) => <Settings size={24} color={color} />,
+          tabBarIcon: ({ color }) => <Ionicons name="settings-outline" size={24} color={color} />,
         }}
       />
       <Tabs.Screen
         name="cms"
         options={{
-          title: 'CMS',
-          tabBarIcon: ({ color }) => <FontAwesome5 name="warehouse" size={20} color={color} />,
+          title: 'Logistics',
+          tabBarIcon: ({ color }) => <Ionicons name="business-outline" size={24} color={color} />,
         }}
       />
     </Tabs>

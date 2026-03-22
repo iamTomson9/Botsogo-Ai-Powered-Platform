@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, TextInput, Modal, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { FontAwesome5 } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
 import { useAuth } from '../../hooks/useAuth';
 import { subscribeToHospitalQueue, updateAppointmentStatus, acceptAppointment, Appointment } from '../../services/appointmentService';
@@ -61,9 +61,9 @@ export default function PatientQueue() {
           <View style={{ flex: 1, marginLeft: 12 }}>
             <Text style={styles.patientName}>{item.patientName}</Text>
             <View style={styles.conditionRow}>
-              <FontAwesome5
-                name={isUrgent ? 'exclamation-circle' : 'stethoscope'}
-                size={12}
+              <Ionicons
+                name={isUrgent ? 'alert-circle' : 'medical'}
+                size={14}
                 color={isUrgent ? '#ef4444' : '#64748b'}
               />
               <Text style={[styles.conditionText, isUrgent && { color: '#ef4444', fontWeight: 'bold' }]}>
@@ -71,16 +71,16 @@ export default function PatientQueue() {
               </Text>
             </View>
           </View>
-          <View style={[styles.statusBadge, { borderColor: item.status === 'in-progress' ? '#10b981' : '#f59e0b' }]}>
+          <View style={[styles.statusBadge, { backgroundColor: item.status === 'in-progress' ? '#f0fdf4' : '#fff7ed', borderColor: item.status === 'in-progress' ? '#10b981' : '#f59e0b' }]}>
             <Text style={[styles.statusText, { color: item.status === 'in-progress' ? '#10b981' : '#f59e0b' }]}>
-              {item.status === 'in-progress' ? '● IN PROGRESS' : '● WAITING'}
+              {item.status === 'in-progress' ? 'IN PROGRESS' : 'WAITING'}
             </Text>
           </View>
         </View>
 
         {item.triage && (
-          <View style={[styles.triageBadge, { backgroundColor: (triageColor || Colors.light.primary) + '20' }]}>
-             <FontAwesome5 name="robot" size={10} color={triageColor || Colors.light.primary} />
+          <View style={[styles.triageBadge, { backgroundColor: (triageColor || Colors.light.primary) + '10' }]}>
+             <Ionicons name="sparkles" size={12} color={triageColor || Colors.light.primary} />
              <Text style={[styles.triageBadgeText, { color: triageColor || Colors.light.primary }]}>
                AI TRIAGE: {item.triage.triageCategory.toUpperCase()}
              </Text>
@@ -88,7 +88,7 @@ export default function PatientQueue() {
         )}
 
         <View style={styles.waitInfo}>
-          <FontAwesome5 name="clock" size={12} color="#94a3b8" />
+          <Ionicons name="time-outline" size={14} color="#94a3b8" />
           <Text style={styles.waitText}>Est. wait: ~{item.estimatedWaitMinutes} min</Text>
         </View>
 
@@ -98,7 +98,7 @@ export default function PatientQueue() {
               style={[styles.actionButton, styles.primaryButton]}
               onPress={() => item.triage ? handleAccept(item) : updateAppointmentStatus(item.id!, 'in-progress')}
             >
-              <FontAwesome5 name={item.triage ? "hand-holding-medical" : "play-circle"} size={14} color="#fff" style={{ marginRight: 6 }} />
+              <Ionicons name={item.triage ? "medical-outline" : "play-circle-outline"} size={16} color="#fff" style={{ marginRight: 6 }} />
               <Text style={styles.primaryButtonText}>{item.triage ? 'Accept Patient' : 'Call In'}</Text>
             </TouchableOpacity>
           )}
@@ -107,8 +107,8 @@ export default function PatientQueue() {
               style={[styles.actionButton, { backgroundColor: '#10b981' }]}
               onPress={() => updateAppointmentStatus(item.id!, 'done')}
             >
-              <FontAwesome5 name="check-circle" size={14} color="#fff" style={{ marginRight: 6 }} />
-              <Text style={styles.primaryButtonText}>Mark Done</Text>
+              <Ionicons name="checkmark-circle-outline" size={16} color="#fff" style={{ marginRight: 6 }} />
+              <Text style={styles.primaryButtonText}>Mark Processed</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -130,12 +130,15 @@ export default function PatientQueue() {
       {/* Hospital ID lookup */}
       {!hospitalId ? (
         <View style={styles.setupContainer}>
-          <FontAwesome5 name="hospital" size={48} color="#cbd5e1" />
-          <Text style={styles.setupTitle}>Enter Your Hospital ID</Text>
-          <Text style={styles.setupSubtitle}>This is the clinic name or ID from the booking system.</Text>
+          <View style={styles.setupIconCircle}>
+            <Ionicons name="business" size={48} color={Colors.light.secondary} />
+          </View>
+          <Text style={styles.setupTitle}>Connect to Facility</Text>
+          <Text style={styles.setupSubtitle}>Please enter the Clinic Name or Hospital ID provided by your administrator to view the live queue.</Text>
           <TextInput
             style={styles.idInput}
             placeholder="e.g. Princess Marina Hospital"
+            placeholderTextColor="#94a3b8"
             value={searchInput}
             onChangeText={setSearchInput}
             autoCapitalize="words"
@@ -145,7 +148,8 @@ export default function PatientQueue() {
             disabled={!searchInput.trim()}
             onPress={() => setHospitalId(searchInput.trim())}
           >
-            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>Connect to Queue</Text>
+            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>Establish Connection</Text>
+            <Ionicons name="chevron-forward" size={18} color="#fff" style={{ marginLeft: 8 }} />
           </TouchableOpacity>
         </View>
       ) : loading ? (
@@ -157,9 +161,12 @@ export default function PatientQueue() {
           renderItem={renderPatient}
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={
-            <View style={{ alignItems: 'center', paddingTop: 60 }}>
-              <FontAwesome5 name="clipboard-check" size={48} color="#cbd5e1" />
-              <Text style={{ marginTop: 16, color: '#64748b', fontSize: 16 }}>No active patients in queue</Text>
+            <View style={{ alignItems: 'center', paddingTop: 100 }}>
+              <View style={styles.emptyIconCircle}>
+                 <Ionicons name="calendar-outline" size={48} color="#cbd5e1" />
+              </View>
+              <Text style={{ marginTop: 20, color: '#1f2937', fontSize: 18, fontWeight: '700' }}>No Active Patients</Text>
+              <Text style={{ marginTop: 8, color: '#64748b', fontSize: 14, textAlign: 'center' }}>The patient queue is currently empty for this facility.</Text>
             </View>
           }
         />
@@ -170,13 +177,13 @@ export default function PatientQueue() {
         {selectedAppointment?.triage && (
           <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
             <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => setSelectedAppointment(null)}>
-                <FontAwesome5 name="times" size={22} color="#334155" />
+              <TouchableOpacity onPress={() => setSelectedAppointment(null)} style={styles.closeBtn}>
+                <Ionicons name="close" size={24} color="#334155" />
               </TouchableOpacity>
               <View style={{ flex: 1, marginLeft: 16 }}>
-                <Text style={styles.modalTitle}>Clinical Brief</Text>
-                <Text style={{ color: SEVERITY_COLORS[selectedAppointment.triage.severity], fontWeight: 'bold' }}>
-                  {selectedAppointment.triage.triageCategory}
+                <Text style={styles.modalTitle}>Clinical Profile</Text>
+                <Text style={{ color: SEVERITY_COLORS[selectedAppointment.triage.severity], fontWeight: 'bold', fontSize: 13 }}>
+                   <Ionicons name="shield-checkmark" size={14} color={SEVERITY_COLORS[selectedAppointment.triage.severity]} /> {selectedAppointment.triage.triageCategory.toUpperCase()}
                 </Text>
               </View>
             </View>
@@ -211,10 +218,10 @@ export default function PatientQueue() {
               </View>
 
               <View style={styles.briefSection}>
-                <Text style={styles.briefLabel}>Doctor Recommended Actions</Text>
+                <Text style={styles.briefLabel}>Clinical Directives</Text>
                 {selectedAppointment.triage.recommendedActions.map((a, i) => (
                   <View key={i} style={styles.briefActionRow}>
-                    <FontAwesome5 name="check-circle" size={14} color={SEVERITY_COLORS[selectedAppointment.triage!.severity]} />
+                    <Ionicons name="checkmark-circle" size={18} color={SEVERITY_COLORS[selectedAppointment.triage!.severity]} />
                     <Text style={styles.briefValue}>{a}</Text>
                   </View>
                 ))}
@@ -313,15 +320,15 @@ const styles = StyleSheet.create({
     color: '#475569',
   },
   statusBadge: {
-    backgroundColor: '#e2e8f0',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    borderWidth: 1,
   },
   statusText: {
     fontSize: 10,
-    fontWeight: 'bold',
-    color: '#475569',
+    fontWeight: '900',
+    letterSpacing: 0.5,
   },
   cardFooter: {
     flexDirection: 'row',
@@ -329,16 +336,17 @@ const styles = StyleSheet.create({
     gap: 12,
     borderTopWidth: 1,
     borderTopColor: '#f1f5f9',
-    paddingTop: 12,
+    paddingTop: 16,
+    marginTop: 12,
   },
   actionButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 14,
   },
   actionButtonText: {
     color: Colors.light.secondary,
-    fontWeight: '600',
+    fontWeight: '700',
     fontSize: 14,
   },
   primaryButton: {
@@ -348,108 +356,123 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     color: '#fff',
-    fontWeight: '600',
+    fontWeight: '700',
     fontSize: 14,
   },
   positionBadge: {
-    width: 40, height: 40, borderRadius: 12,
-    backgroundColor: Colors.light.secondary + '20',
+    width: 44, height: 44, borderRadius: 14,
+    backgroundColor: Colors.light.secondary + '10',
     justifyContent: 'center', alignItems: 'center',
   },
-  positionText: { fontSize: 15, fontWeight: 'bold', color: Colors.light.secondary },
-  waitInfo: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, marginBottom: 4 },
-  waitText: { fontSize: 13, color: '#94a3b8' },
-  setupContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40, gap: 12 },
-  setupTitle: { fontSize: 22, fontWeight: 'bold', color: '#0f172a', marginTop: 16 },
-  setupSubtitle: { fontSize: 14, color: '#64748b', textAlign: 'center', marginBottom: 8 },
+  positionText: { fontSize: 16, fontWeight: '800', color: Colors.light.secondary },
+  waitInfo: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12, marginBottom: 4 },
+  waitText: { fontSize: 13, color: '#94a3b8', fontWeight: '500' },
+  setupContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32, gap: 12 },
+  setupIconCircle: { width: 100, height: 100, borderRadius: 50, backgroundColor: Colors.light.secondary + '10', justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
+  setupTitle: { fontSize: 24, fontWeight: '800', color: '#0f172a' },
+  setupSubtitle: { fontSize: 15, color: '#64748b', textAlign: 'center', marginBottom: 16, lineHeight: 22 },
   idInput: {
-    width: '100%', backgroundColor: '#fff', borderRadius: 14, padding: 16,
-    fontSize: 16, borderWidth: 1.5, borderColor: '#e2e8f0', marginTop: 8,
+    width: '100%', backgroundColor: '#fff', borderRadius: 16, padding: 18,
+    fontSize: 16, borderWidth: 2, borderColor: '#e2e8f0', marginBottom: 16,
+    color: '#0f172a', fontWeight: '500',
   },
   connectBtn: {
-    backgroundColor: Colors.light.secondary, borderRadius: 16,
-    paddingVertical: 16, paddingHorizontal: 32, marginTop: 12,
+    backgroundColor: Colors.light.secondary, borderRadius: 18,
+    paddingVertical: 18, paddingHorizontal: 32, flexDirection: 'row', alignItems: 'center',
+    shadowColor: Colors.light.secondary, shadowOpacity: 0.3, shadowRadius: 10, elevation: 5,
   },
   triageBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
     alignSelf: 'flex-start',
     marginBottom: 8,
   },
   triageBadgeText: {
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: '900',
+    letterSpacing: 0.5,
   },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 20,
+    padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: '#f1f5f9',
     backgroundColor: '#fff',
   },
+  closeBtn: {
+    width: 44, height: 44, borderRadius: 22, backgroundColor: '#f8fafc',
+    justifyContent: 'center', alignItems: 'center',
+  },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 22,
+    fontWeight: '800',
     color: '#0f172a',
   },
   briefSection: {
     backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
+    padding: 20,
+    borderRadius: 18,
     shadowColor: '#000',
-    shadowOpacity: 0.02,
-    shadowRadius: 5,
-    elevation: 1,
+    shadowOpacity: 0.03,
+    shadowRadius: 10,
+    elevation: 2,
   },
   briefLabel: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 10,
+    fontWeight: '900',
     color: '#94a3b8',
     textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 8,
+    letterSpacing: 1.5,
+    marginBottom: 10,
   },
   briefValue: {
-    fontSize: 15,
-    color: '#334155',
-    lineHeight: 22,
+    fontSize: 16,
+    color: '#1e293b',
+    lineHeight: 24,
     flex: 1,
+    fontWeight: '500',
   },
   briefChipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 10,
   },
   briefChip: {
     backgroundColor: '#f1f5f9',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
   },
   briefChipText: {
-    fontSize: 12,
-    color: '#334155',
-    fontWeight: '600',
+    fontSize: 13,
+    color: '#475569',
+    fontWeight: '700',
   },
   briefActionRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 12,
-    marginBottom: 8,
+    gap: 14,
+    marginBottom: 12,
   },
   urgencyBanner: {
-    padding: 16,
-    borderRadius: 12,
+    padding: 20,
+    borderRadius: 18,
     alignItems: 'center',
     marginTop: 10,
+    marginBottom: 40,
   },
   urgencyBannerText: {
-    fontWeight: 'bold',
-    fontSize: 14,
+    fontWeight: '900',
+    fontSize: 15,
+    letterSpacing: 1,
   },
+  emptyIconCircle: {
+     width: 100, height: 100, borderRadius: 50, backgroundColor: '#f8fafc',
+     justifyContent: 'center', alignItems: 'center'
+  }
 });

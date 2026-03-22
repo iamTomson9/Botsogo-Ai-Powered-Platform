@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { FontAwesome5 } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { getMyClinicRequests, requestMedication } from '../../services/stockService';
 import { getMedicationsList } from '../../services/inventoryService';
 import { useAuth } from '../../hooks/useAuth';
@@ -80,10 +80,13 @@ export default function StockRequestsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>CMS Stock Requests</Text>
+        <View>
+          <Text style={styles.title}>CMS Logistics</Text>
+          <Text style={styles.subtitle}>Medication replenishment requests</Text>
+        </View>
         <TouchableOpacity style={styles.addBtn} onPress={() => setShowModal(true)}>
-          <FontAwesome5 name="plus" size={16} color="#fff" />
-          <Text style={styles.addBtnText}>New Request</Text>
+          <Ionicons name="add-circle-outline" size={20} color="#fff" />
+          <Text style={styles.addBtnText}>Request Support</Text>
         </TouchableOpacity>
       </View>
 
@@ -108,13 +111,13 @@ export default function StockRequestsScreen() {
               </View>
               <View style={styles.cardBody}>
                 <View style={styles.infoRow}>
-                  <FontAwesome5 name="layer-group" size={12} color="#94a3b8" />
-                  <Text style={styles.infoText}>Quantity Requested: {item.quantity}</Text>
+                  <Ionicons name="layers-outline" size={14} color="#94a3b8" />
+                  <Text style={styles.infoText}>Order Volume: {item.quantity}</Text>
                 </View>
                 <View style={styles.infoRow}>
-                  <FontAwesome5 name="calendar-alt" size={12} color="#94a3b8" />
+                  <Ionicons name="calendar-outline" size={14} color="#94a3b8" />
                   <Text style={styles.infoText}>
-                    Date: {item.createdAt?.toDate().toLocaleDateString()}
+                    Logged: {item.createdAt?.toDate().toLocaleDateString()}
                   </Text>
                 </View>
                 {item.notes && (
@@ -128,8 +131,8 @@ export default function StockRequestsScreen() {
           )}
           ListEmptyComponent={
             <View style={styles.empty}>
-              <FontAwesome5 name="clipboard-list" size={40} color="#cbd5e1" />
-              <Text style={styles.emptyText}>No stock requests yet.</Text>
+              <Ionicons name="file-tray-full-outline" size={64} color="#cbd5e1" />
+              <Text style={styles.emptyText}>No logistics requests logged.</Text>
             </View>
           }
         />
@@ -140,9 +143,9 @@ export default function StockRequestsScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Request Stock from CMS</Text>
+              <Text style={styles.modalTitle}>New CMS Requisition</Text>
               <TouchableOpacity onPress={() => setShowModal(false)}>
-                <FontAwesome5 name="times" size={20} color="#64748b" />
+                <Ionicons name="close" size={24} color="#64748b" />
               </TouchableOpacity>
             </View>
 
@@ -194,39 +197,40 @@ export default function StockRequestsScreen() {
 import { ScrollView } from 'react-native';
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8fafc' },
-  header: { padding: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
-  title: { fontSize: 20, fontWeight: 'bold', color: '#0f172a' },
-  addBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.light.primary, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
-  addBtnText: { color: '#fff', fontWeight: 'bold', marginLeft: 8, fontSize: 14 },
+  container: { flex: 1, backgroundColor: '#f0f9ff' },
+  header: { padding: 24, paddingTop: 60, backgroundColor: '#fff', borderBottomLeftRadius: 32, borderBottomRightRadius: 32, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', shadowColor: '#0f172a', shadowOpacity: 0.06, shadowRadius: 15, elevation: 5 },
+  title: { fontSize: 22, fontWeight: '900', color: '#0f172a' },
+  subtitle: { fontSize: 13, color: '#64748b', marginTop: 4 },
+  addBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.light.secondary, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, shadowColor: Colors.light.secondary, shadowOpacity: 0.25, shadowRadius: 10, elevation: 4 },
+  addBtnText: { color: '#fff', fontWeight: '800', marginLeft: 8, fontSize: 13 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  requestCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#e2e8f0' },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
-  medName: { fontSize: 16, fontWeight: 'bold', color: '#0f172a' },
-  statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-  statusText: { fontSize: 10, fontWeight: '900' },
-  cardBody: { gap: 8 },
-  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  infoText: { fontSize: 14, color: '#475569' },
-  notesBox: { marginTop: 8, padding: 10, backgroundColor: '#f1f5f9', borderRadius: 8 },
-  notesLabel: { fontSize: 12, fontWeight: 'bold', color: '#64748b', marginBottom: 2 },
-  notesText: { fontSize: 13, color: '#334155' },
-  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: 100 },
-  emptyText: { marginTop: 16, color: '#94a3b8', fontSize: 16 },
+  requestCard: { backgroundColor: '#fff', borderRadius: 24, padding: 20, marginBottom: 16, shadowColor: '#0f172a', shadowOpacity: 0.04, shadowRadius: 10, elevation: 2 },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  medName: { fontSize: 17, fontWeight: '800', color: '#0f172a' },
+  statusBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 },
+  statusText: { fontSize: 10, fontWeight: '900', letterSpacing: 1 },
+  cardBody: { gap: 10 },
+  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  infoText: { fontSize: 14, color: '#475569', fontWeight: '500' },
+  notesBox: { marginTop: 12, padding: 14, backgroundColor: '#f1f5f9', borderRadius: 14, borderWidth: 1, borderColor: '#e2e8f0' },
+  notesLabel: { fontSize: 11, fontWeight: '800', color: '#94a3b8', marginBottom: 4, textTransform: 'uppercase' },
+  notesText: { fontSize: 13, color: '#1e293b', lineHeight: 20 },
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: 120 },
+  emptyText: { marginTop: 16, color: '#94a3b8', fontSize: 15, fontWeight: '600' },
   
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, maxHeight: '80%' },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
-  modalTitle: { fontSize: 18, fontWeight: 'bold', color: '#0f172a' },
-  modalBody: { gap: 16 },
-  label: { fontSize: 14, fontWeight: 'bold', color: '#64748b' },
-  input: { backgroundColor: '#f1f5f9', borderRadius: 12, padding: 14, fontSize: 16, color: '#0f172a' },
-  medList: { maxHeight: 200, backgroundColor: '#f8fafc', borderRadius: 12, padding: 8, borderWidth: 1, borderColor: '#e2e8f0' },
-  medOption: { padding: 12, borderRadius: 8, marginBottom: 4, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  medOptionActive: { backgroundColor: Colors.light.primary + '15', borderColor: Colors.light.primary, borderWidth: 1 },
-  medOptionText: { fontSize: 14, color: '#334155' },
-  medOptionTextActive: { fontWeight: 'bold', color: Colors.light.primary },
-  stockLevel: { fontSize: 12, color: '#94a3b8' },
-  submitBtn: { backgroundColor: Colors.light.primary, padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 8 },
-  submitBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 40, borderTopRightRadius: 40, padding: 28, maxHeight: '85%' },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 },
+  modalTitle: { fontSize: 20, fontWeight: '900', color: '#0f172a' },
+  modalBody: { gap: 20 },
+  label: { fontSize: 14, fontWeight: '800', color: '#475569', letterSpacing: 0.3 },
+  input: { backgroundColor: '#f8fafc', borderRadius: 16, padding: 16, fontSize: 16, color: '#0f172a', fontWeight: '600', borderWidth: 1.5, borderColor: '#e2e8f0' },
+  medList: { maxHeight: 240, backgroundColor: '#fff', borderRadius: 20, padding: 10, borderWidth: 1.5, borderColor: '#f1f5f9' },
+  medOption: { padding: 14, borderRadius: 12, marginBottom: 6, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#f8fafc' },
+  medOptionActive: { backgroundColor: Colors.light.secondary + '10', borderColor: Colors.light.secondary, borderWidth: 1.5 },
+  medOptionText: { fontSize: 15, color: '#334155', fontWeight: '500' },
+  medOptionTextActive: { fontWeight: '800', color: Colors.light.secondary },
+  stockLevel: { fontSize: 12, color: '#94a3b8', fontWeight: '600' },
+  submitBtn: { backgroundColor: Colors.light.secondary, padding: 20, borderRadius: 20, alignItems: 'center', marginTop: 10, shadowColor: Colors.light.secondary, shadowOpacity: 0.3, shadowRadius: 15, elevation: 8 },
+  submitBtnText: { color: '#fff', fontWeight: '800', fontSize: 16, letterSpacing: 0.5 },
 });
